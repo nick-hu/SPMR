@@ -1,0 +1,6 @@
+authors = ["Nicholas <nicholas.hu@alumni.ubc.ca>"]
+name = "SPMR"
+uuid = "07eb1926-e2d3-11e8-0626-cd2a0176316e"
+version = "0.1.0"
+
+[deps]
