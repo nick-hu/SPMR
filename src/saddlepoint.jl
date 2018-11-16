@@ -13,8 +13,11 @@ struct SPMatrix{T<:AbstractMatrix{Float64},
         n = checksquare(A)
         m = size(G₁ᵀ, 2)
 
-        @assert size(G₁ᵀ) == (n, m)
-        @assert size(G₂) == (m, n)
+        if size(G₁ᵀ) ≠ (n, m)
+            throw(DimensionMismatch("G₁ᵀ should have size ($n, $m)"))
+        elseif size(G₂) ≠ (m, n)
+            throw(DimensionMismatch("G₂ should have size ($m, $n)"))
+        end
 
         return new{T, U, V}(A, G₁ᵀ, G₂)
     end
