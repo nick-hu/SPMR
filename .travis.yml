@@ -1,0 +1,12 @@
+language: julia
+
+julia:
+  - 1.0
+
+codecov: true
+
+after_success:
+    - julia -e 'cd(Pkg.dir("SPMR")); Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'
+
+notifications:
+    email: false
