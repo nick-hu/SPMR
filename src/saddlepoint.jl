@@ -1,15 +1,12 @@
 # Saddle-point matrices
 
-struct SPMatrix{T<:AbstractMatrix{Float64},
-                U<:AbstractMatrix{Float64},
-                V<:AbstractMatrix{Float64}} <: AbstractMatrix{Float64}
+struct SPMatrix{T<:FloatMatrix, U<:FloatMatrix, V<:FloatMatrix} <: FloatMatrix
     A::T
     G₁ᵀ::U
     G₂::V
 
-    function SPMatrix{T, U, V}(A, G₁ᵀ, G₂) where {T<:AbstractMatrix{Float64},
-                                                  U<:AbstractMatrix{Float64},
-                                                  V<:AbstractMatrix{Float64}}
+    function SPMatrix{T, U, V}(A, G₁ᵀ, G₂) where {T<:FloatMatrix, U<:FloatMatrix,
+                                                  V<:FloatMatrix}
         n = checksquare(A)
         m = size(G₁ᵀ, 2)
 
@@ -23,19 +20,16 @@ struct SPMatrix{T<:AbstractMatrix{Float64},
     end
 end
 
-function SPMatrix(A::T, G₁ᵀ::U, G₂::V) where {T<:AbstractMatrix{Float64},
-                                              U<:AbstractMatrix{Float64},
-                                              V<:AbstractMatrix{Float64}}
+function SPMatrix(A::T, G₁ᵀ::U, G₂::V) where {T<:FloatMatrix, U<:FloatMatrix,
+                                              V<:FloatMatrix}
     return SPMatrix{T, U, V}(A, G₁ᵀ, G₂)
 end
 
-function SPMatrix(A::T, G₁ᵀ::U, G₂::V) where {T<:AbstractMatrix{<:Real},
-                                              U<:AbstractMatrix{<:Real},
-                                              V<:AbstractMatrix{<:Real}}
-    return SPMatrix(map(x -> convert(AbstractMatrix{Float64}, x), (A, G₁ᵀ, G₂))...)
+function SPMatrix(A::T, G₁ᵀ::U, G₂::V) where {T<:RealMatrix, U<:RealMatrix, V<:RealMatrix}
+    return SPMatrix(map(x -> convert(FloatMatrix, x), (A, G₁ᵀ, G₂))...)
 end
 
-function SPMatrix(K::AbstractMatrix{<:Real}, n::Integer)
+function SPMatrix(K::RealMatrix, n::Integer)
     return SPMatrix(K[1:n, 1:n], K[1:n, n+1:end], K[n+1:end, 1:n])
 end
 

@@ -33,6 +33,7 @@ using Test, LinearAlgebra, SPMR
 
     @testset "Construction from rectangular matrix" begin
         @test_throws DimensionMismatch K = SPMatrix(rand(4, 3), 2)
+        @test_throws DimensionMismatch K = SPMatrix(rand(2, 2), rand(1, 2), rand(2, 2))
     end
 
 end
@@ -50,6 +51,15 @@ end
         @test K.G₁ᵀ[1, 1] == 2
         @test K.G₂[1, 1] == 3
         @test K[4, 4] == 0
+    end
+
+    @testset "Out of bounds get/set" begin
+        K = SPMatrix(zeros(4, 4), 3)
+
+        @test_throws BoundsError K[5, 4]
+        @test_throws BoundsError K[4, 5]
+        @test_throws BoundsError K[5, 4] = 0
+        @test_throws BoundsError K[4, 5] = 0
     end
 
     @testset "Set in zero block" begin
