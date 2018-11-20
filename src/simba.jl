@@ -32,8 +32,7 @@ function simba_sc(K::SPMatrix, b::Vector{Float64}, c::Vector{Float64})
 end
 
 function simba_sc(K::SPMatrix, b::AbstractVector{<:Real}, c::AbstractVector{<:Real})
-    return SimbaScIterator(factorize(K.A), K.G₁ᵀ, K.G₂,
-                           convert(Vector{Float64}, b), convert(Vector{Float64}, c))
+    return simba_sc(K, convert(Vector{Float64}, b), convert(Vector{Float64}, c))
 end
 
 function Base.iterate(SSI::SimbaScIterator, SI_prev::SimbaIterate=SimbaIterate())
@@ -57,26 +56,30 @@ function Base.iterate(SSI::SimbaScIterator, SI_prev::SimbaIterate=SimbaIterate()
     else
         v = SSI.G₁ᵀ' * SI_prev.w - SI_prev.α * SI_prev.v
         β = norm(v)
-        v = v / β
+        v /= β
 
         z = SSI.G₂ * SI_prev.u - SI_prev.γ * SI_prev.z
         δ = norm(z)
-        z = z / δ
+        z /= δ
 
         û = SSI.G₁ᵀ * v
         ŵ = SSI.G₂' * z
-        u = SSI.A \ û - copysign(SI_prev.ξ, β) * SI_prev.u
-        w = SSI.A' \ ŵ - copysign(SI_prev.ξ, δ) * SI_prev.w
+        u = SSI.A \ û - copysign(β, SI_prev.ξ) * SI_prev.u
+        w = SSI.A' \ ŵ - copysign(δ, SI_prev.ξ) * SI_prev.w
     end
 
     ξ = û ⋅ w
 
     α = sqrt(abs(ξ))
     γ = α
-    u = copysign(ξ, inv(α)) * u
-    w = copysign(ξ, inv(γ)) * w
+    u *= copysign(inv(α), ξ)
+    w *= copysign(inv(γ), ξ)
 
     SI = SimbaIterate(k+1, α, β, γ, δ, ξ, u, v, w, z)
 
     return (SI, SI)
 end
+
+Base.eltype(::Type{SimbaScIterator{U, V}}) where {U, V} = SimbaIterate
+
+Base.length(SSI::SimbaScIterator) = size(SSI.G₂, 1)

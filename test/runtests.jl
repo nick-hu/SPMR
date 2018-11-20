@@ -28,7 +28,7 @@ using Test, LinearAlgebra, SPMR
     @testset "Conversion from self" begin
         K = SPMatrix(rand(4, 4), 2)
 
-        @test K == SPMatrix(K)
+        @test SPMatrix(K) == K
     end
 
     @testset "Construction from rectangular matrix" begin
@@ -68,4 +68,65 @@ end
         @test_throws ArgumentError K[2, 2] = 1
     end
 
+end
+
+@testset "SIMBA-SC" begin
+    n, m = 3, 2
+    K = SPMatrix(rand(n+m, n+m), n)
+    A, G₁ᵀ, G₂ = K.A, K.G₁ᵀ, K.G₂
+    b, c = rand(m), rand(m)
+
+    @testset "Iterator construction" begin
+        SSI = simba_sc(K, b, c)
+
+        @test Matrix(SSI.A) ≈ A
+        @test SSI.G₁ᵀ == G₁ᵀ
+        @test SSI.G₂ == G₂
+    end
+
+    SSI = simba_sc(K, b, c)
+
+    @testset "Iteration" begin
+        k = 0
+
+        for _ in SSI
+            k += 1
+        end
+
+        @test length(SSI) == k
+    end
+
+    @testset "Iteration correctness" begin
+        SI_prev = eltype(typeof(SSI))()
+
+        for (k, SI) in enumerate(SSI)
+            @test SI.k == k
+
+            if k == 1
+                @test SI.β * SI.v ≈ b
+                @test SI.δ * SI.z ≈ c
+
+                @test A * (copysign(SI.α, SI.ξ) * SI.u) ≈ G₁ᵀ * SI.v
+                @test A' * (copysign(SI.γ, SI.ξ) * SI.w) ≈ G₂' * SI.z
+            else
+                @test SI.β * SI.v ≈ G₁ᵀ' * SI_prev.w - SI_prev.α * SI_prev.v
+                @test SI.δ * SI.z ≈ G₂ * SI_prev.u - SI_prev.γ * SI_prev.z
+
+                @test A * (copysign(SI.α, SI.ξ) * SI.u +
+                           copysign(SI.β, SI_prev.ξ) * SI_prev.u) ≈ G₁ᵀ * SI.v
+                @test A' * (copysign(SI.γ, SI.ξ) * SI.w +
+                            copysign(SI.δ, SI_prev.ξ) * SI_prev.w) ≈ G₂' * SI.z
+            end
+
+            SI_prev = SI
+        end
+    end
+
+    @testset "Almost-conjugacy and orthonormality" begin
+        for SI in SSI
+            @test abs(SI.w ⋅ (A * SI.u)) ≈ 1
+            @test norm(SI.v) ≈ 1
+            @test norm(SI.z) ≈ 1
+        end
+    end
 end
