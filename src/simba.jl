@@ -1,7 +1,7 @@
 # SIMBA: Simultaneous bidiagonalization via A-conjugacy
 
-struct SimbaScIterator{U<:FloatMatrix, V<:FloatMatrix}
-    A::Factorization{Float64}
+struct SimbaScIterator{T<:Factorization{Float64}, U<:FloatMatrix, V<:FloatMatrix}
+    A::T
     G₁ᵀ::U
     G₂::V
 
