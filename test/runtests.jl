@@ -97,26 +97,24 @@ end
     end
 
     @testset "Iteration correctness" begin
-        SI_prev = eltype(typeof(SSI))()
+        SI_prev = SSI.SI₀
+
+        @test SI_prev.β * SI_prev.v ≈ b
+        @test SI_prev.δ * SI_prev.z ≈ c
+
+        @test A * (copysign(SI_prev.α, SI_prev.ξ) * SI_prev.u) ≈ G₁ᵀ * SI_prev.v
+        @test A' * (copysign(SI_prev.γ, SI_prev.ξ) * SI_prev.w) ≈ G₂' * SI_prev.z
 
         for (k, SI) in enumerate(SSI)
             @test SI.k == k
 
-            if k == 1
-                @test SI.β * SI.v ≈ b
-                @test SI.δ * SI.z ≈ c
+            @test SI.β * SI.v ≈ G₁ᵀ' * SI_prev.w - SI_prev.α * SI_prev.v
+            @test SI.δ * SI.z ≈ G₂ * SI_prev.u - SI_prev.γ * SI_prev.z
 
-                @test A * (copysign(SI.α, SI.ξ) * SI.u) ≈ G₁ᵀ * SI.v
-                @test A' * (copysign(SI.γ, SI.ξ) * SI.w) ≈ G₂' * SI.z
-            else
-                @test SI.β * SI.v ≈ G₁ᵀ' * SI_prev.w - SI_prev.α * SI_prev.v
-                @test SI.δ * SI.z ≈ G₂ * SI_prev.u - SI_prev.γ * SI_prev.z
-
-                @test A * (copysign(SI.α, SI.ξ) * SI.u +
-                           copysign(SI.β, SI_prev.ξ) * SI_prev.u) ≈ G₁ᵀ * SI.v
-                @test A' * (copysign(SI.γ, SI.ξ) * SI.w +
-                            copysign(SI.δ, SI_prev.ξ) * SI_prev.w) ≈ G₂' * SI.z
-            end
+            @test A * (copysign(SI.α, SI.ξ) * SI.u +
+                       copysign(SI.β, SI_prev.ξ) * SI_prev.u) ≈ G₁ᵀ * SI.v
+            @test A' * (copysign(SI.γ, SI.ξ) * SI.w +
+                        copysign(SI.δ, SI_prev.ξ) * SI_prev.w) ≈ G₂' * SI.z
 
             SI_prev = SI
         end

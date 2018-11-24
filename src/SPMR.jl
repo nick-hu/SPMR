@@ -6,7 +6,9 @@ using LinearAlgebra: checksquare
 export
     SPMatrix,
 
-    simba_sc
+    simba_sc,
+
+    spmr_sc
 
 const FloatMatrix = AbstractMatrix{Float64}
 const RealMatrix = AbstractMatrix{<:Real}
@@ -18,5 +20,7 @@ undef_vec(n::Int) = Vector{Float64}(undef, n)
 include("saddlepoint.jl")
 
 include("simba.jl")
+
+include("spmr.jl")
 
 end # module
