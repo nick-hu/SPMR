@@ -18,6 +18,7 @@ end
 
 struct SimbaScIterator{T<:Factorization{Float64}, U<:FloatMatrix, V<:FloatMatrix}
     A::T
+    Aᵀ::T
     G₁ᵀ::U
     G₂::V
 
@@ -25,28 +26,31 @@ struct SimbaScIterator{T<:Factorization{Float64}, U<:FloatMatrix, V<:FloatMatrix
 end
 
 function simba_sc(K::SPMatrix, b::Vector{Float64}, c::Vector{Float64})
-    A = factorize(K.A)
+    n, m = block_sizes(K)
 
-    β = norm(b)
+    A = factorize(K.A)
+    Aᵀ = factorize(copy(K.A'))
+
+    β = BLAS.nrm2(m, b, 1)
     v = b / β
-    δ = norm(c)
+    δ = BLAS.nrm2(m, c, 1)
     z = c / δ
 
-    û = K.G₁ᵀ * v
-    ŵ = K.G₂' * z
+    û = BLAS.gemv('N', K.G₁ᵀ, v)
+    ŵ = BLAS.gemv('T', K.G₂, z)
     u = (A \ û)::Vector{Float64}  # Annotate since factorization type is unknown
-    w = (A' \ ŵ)::Vector{Float64}  # Annotate since factorization type is unknown
+    w = (Aᵀ \ ŵ)::Vector{Float64}  # Annotate since factorization type is unknown
 
     ξ = û ⋅ w
 
     α = sqrt(abs(ξ))
     γ = α
-    u *= copysign(inv(α), ξ)
-    w *= copysign(inv(γ), ξ)
+    BLAS.scal!(n, copysign(inv(α), ξ), u, 1)
+    BLAS.scal!(n, copysign(inv(γ), ξ), w, 1)
 
     SI₀ = SimbaIterate(0, α, β, γ, δ, ξ, u, v, w, z)
 
-    return SimbaScIterator(A, K.G₁ᵀ, K.G₂, SI₀)
+    return SimbaScIterator(A, Aᵀ, K.G₁ᵀ, K.G₂, SI₀)
 end
 
 function simba_sc(K::SPMatrix, b::AbstractVector{<:Real}, c::AbstractVector{<:Real})
@@ -54,29 +58,33 @@ function simba_sc(K::SPMatrix, b::AbstractVector{<:Real}, c::AbstractVector{<:Re
 end
 
 function Base.iterate(SSI::SimbaScIterator, SI_prev::SimbaIterate=SSI.SI₀)
-    if SI_prev.k ≥ size(SSI.G₂, 1) - 1
+    n, m = block_sizes(SSI)
+
+    if SI_prev.k ≥ m
         return nothing
     end
 
-    v = SSI.G₁ᵀ' * SI_prev.w - SI_prev.α * SI_prev.v
-    β = norm(v)
-    v /= β
+    v = copy(SI_prev.v)
+    BLAS.gemv!('T', one(Float64), SSI.G₁ᵀ, SI_prev.w, -SI_prev.α, v)
+    β = BLAS.nrm2(m, v, 1)
+    BLAS.scal!(m, inv(β), v, 1)
 
-    z = SSI.G₂ * SI_prev.u - SI_prev.γ * SI_prev.z
-    δ = norm(z)
-    z /= δ
+    z = copy(SI_prev.z)
+    BLAS.gemv!('N', one(Float64), SSI.G₂, SI_prev.u, -SI_prev.γ, z)
+    δ = BLAS.nrm2(m, z, 1)
+    BLAS.scal!(m, inv(δ), z, 1)
 
-    û = SSI.G₁ᵀ * v
-    ŵ = SSI.G₂' * z
+    û = BLAS.gemv('N', SSI.G₁ᵀ, v)
+    ŵ = BLAS.gemv('T', SSI.G₂, z)
     u = SSI.A \ û - copysign(β, SI_prev.ξ) * SI_prev.u
-    w = SSI.A' \ ŵ - copysign(δ, SI_prev.ξ) * SI_prev.w
+    w = SSI.Aᵀ \ ŵ - copysign(δ, SI_prev.ξ) * SI_prev.w
 
     ξ = û ⋅ w
 
     α = sqrt(abs(ξ))
     γ = α
-    u *= copysign(inv(α), ξ)
-    w *= copysign(inv(γ), ξ)
+    BLAS.scal!(n, copysign(inv(α), ξ), u, 1)
+    BLAS.scal!(n, copysign(inv(γ), ξ), w, 1)
 
     SI = SimbaIterate(SI_prev.k + 1, α, β, γ, δ, ξ, u, v, w, z)
 
@@ -85,4 +93,6 @@ end
 
 Base.eltype(::Type{SimbaScIterator{T, U, V}}) where {T, U, V} = SimbaIterate
 
-Base.length(SSI::SimbaScIterator) = size(SSI.G₂, 1) - 1
+Base.length(SSI::SimbaScIterator) = size(SSI.G₂, 1)
+
+block_sizes(SSI::SimbaScIterator) = (size(SSI.A, 1), size(SSI.G₂, 1))

@@ -1,4 +1,7 @@
-using Test, LinearAlgebra, SPMR
+using Test, LinearAlgebra
+
+using SPMR
+using SPMR: simba_sc
 
 @testset "SPMatrix construction" begin
 

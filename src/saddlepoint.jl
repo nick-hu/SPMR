@@ -1,5 +1,7 @@
 # Saddle-point matrices
 
+export SPMatrix
+
 struct SPMatrix{T<:FloatMatrix, U<:FloatMatrix, V<:FloatMatrix} <: FloatMatrix
     A::T
     G₁ᵀ::U
@@ -80,3 +82,5 @@ function Base.replace_in_print_matrix(K::SPMatrix, i::Integer, j::Integer,
     n = size(K.A, 1)
     return i > n && j > n ? Base.replace_with_centered_mark(s) : s
 end
+
+block_sizes(K::SPMatrix) = (size(K.A, 1), size(K.G₂, 1))
