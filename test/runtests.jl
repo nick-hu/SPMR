@@ -1,4 +1,4 @@
-using Test, LinearAlgebra
+using Test, LinearAlgebra, SparseArrays
 
 using SPMR
 using SPMR: simba_sc
@@ -131,3 +131,29 @@ end
         end
     end
 end
+
+@testset "SPMR-SC" begin
+    n, m = 100, 70
+    K = SPMatrix(rand(n+m, n+m), n)
+    g = rand(m)
+
+    @testset "Relative residual" begin
+        result = spmr_sc(K, g)
+
+        b = [zeros(n); g]
+        x = [result.x; result.y]
+
+        @test norm(b - K * x) / norm(b) ≈ result.resvec[end]
+    end
+
+    @testset "Monotonic decrease of residual norm" begin
+        result = spmr_sc(K, g)
+
+        resvec_next = circshift(result.resvec, (-1))
+        resvec_next[end] = zero(Float64)
+
+        @test all(result.resvec .≥ resvec_next)
+    end
+end
+
+include("grcar.jl")

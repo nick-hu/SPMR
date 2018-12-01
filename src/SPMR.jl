@@ -1,6 +1,6 @@
 module SPMR
 
-using LinearAlgebra
+using LinearAlgebra, SparseArrays
 using LinearAlgebra: checksquare
 
 const FloatMatrix = AbstractMatrix{Float64}

@@ -29,22 +29,29 @@ function simba_sc(K::SPMatrix, b::Vector{Float64}, c::Vector{Float64})
     n, m = block_sizes(K)
 
     A = factorize(K.A)
-    Aᵀ = factorize(copy(K.A'))
+    Aᵀ = issymmetric(K.A) ? A : factorize(copy(K.A'))
 
     β = BLAS.nrm2(m, b, 1)
     v = b / β
     δ = BLAS.nrm2(m, c, 1)
     z = c / δ
 
-    û = BLAS.gemv('N', K.G₁ᵀ, v)
-    ŵ = BLAS.gemv('T', K.G₂, z)
-    u = (A \ û)::Vector{Float64}  # Annotate since factorization type is unknown
-    w = (Aᵀ \ ŵ)::Vector{Float64}  # Annotate since factorization type is unknown
+    û = Vector{Float64}(undef, n)
+    ŵ = Vector{Float64}(undef, n)
+
+    mul!(û, K.G₁ᵀ, v)
+    mul!(ŵ, K.G₂', z)
+
+    u = copy(û)
+    ldiv!(A, u)
+    w = copy(ŵ)
+    ldiv!(Aᵀ, w)
 
     ξ = û ⋅ w
 
     α = sqrt(abs(ξ))
     γ = α
+
     BLAS.scal!(n, copysign(inv(α), ξ), u, 1)
     BLAS.scal!(n, copysign(inv(γ), ξ), w, 1)
 
@@ -64,25 +71,37 @@ function Base.iterate(SSI::SimbaScIterator, SI_prev::SimbaIterate=SSI.SI₀)
         return nothing
     end
 
-    v = copy(SI_prev.v)
-    BLAS.gemv!('T', one(Float64), SSI.G₁ᵀ, SI_prev.w, -SI_prev.α, v)
+    v = Vector{Float64}(undef, m)
+    z = Vector{Float64}(undef, m)
+
+    mul!(v, SSI.G₁ᵀ', SI_prev.w)
+    BLAS.axpy!(-SI_prev.α, SI_prev.v, v)
+    mul!(z, SSI.G₂, SI_prev.u)
+    BLAS.axpy!(-SI_prev.γ, SI_prev.z, z)
+
     β = BLAS.nrm2(m, v, 1)
     BLAS.scal!(m, inv(β), v, 1)
-
-    z = copy(SI_prev.z)
-    BLAS.gemv!('N', one(Float64), SSI.G₂, SI_prev.u, -SI_prev.γ, z)
     δ = BLAS.nrm2(m, z, 1)
     BLAS.scal!(m, inv(δ), z, 1)
 
-    û = BLAS.gemv('N', SSI.G₁ᵀ, v)
-    ŵ = BLAS.gemv('T', SSI.G₂, z)
-    u = SSI.A \ û - copysign(β, SI_prev.ξ) * SI_prev.u
-    w = SSI.Aᵀ \ ŵ - copysign(δ, SI_prev.ξ) * SI_prev.w
+    û = Vector{Float64}(undef, n)
+    ŵ = Vector{Float64}(undef, n)
+
+    mul!(û, SSI.G₁ᵀ, v)
+    mul!(ŵ, SSI.G₂', z)
+
+    u = copy(û)
+    ldiv!(SSI.A, u)
+    BLAS.axpy!(-copysign(β, SI_prev.ξ), SI_prev.u, u)
+    w = copy(ŵ)
+    ldiv!(SSI.Aᵀ, w)
+    BLAS.axpy!(-copysign(δ, SI_prev.ξ), SI_prev.w, w)
 
     ξ = û ⋅ w
 
     α = sqrt(abs(ξ))
     γ = α
+
     BLAS.scal!(n, copysign(inv(α), ξ), u, 1)
     BLAS.scal!(n, copysign(inv(γ), ξ), w, 1)
 
@@ -93,6 +112,6 @@ end
 
 Base.eltype(::Type{SimbaScIterator{T, U, V}}) where {T, U, V} = SimbaIterate
 
-Base.length(SSI::SimbaScIterator) = size(SSI.G₂, 1)
+Base.length(SSI::SimbaScIterator) = block_sizes(SSI)[2]
 
 block_sizes(SSI::SimbaScIterator) = (size(SSI.A, 1), size(SSI.G₂, 1))

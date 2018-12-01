@@ -15,7 +15,8 @@ function spmr_sc(K::SPMatrix, g::AbstractVector{<:Real};
     d = SSI.SI₀.u
 
     T = Matrix{Float64}(undef, m, 3)
-    BLAS.blascopy!(m, SSI.SI₀.v, 1, T, 1)
+    t = @view T[:, 1]
+    BLAS.blascopy!(m, SSI.SI₀.v, 1, t, 1)
     μ, ν = zero(Float64), zero(Float64)
     α_prev, ξ_prev, σ_prev = SSI.SI₀.α, SSI.SI₀.ξ, zero(Float64)
 
@@ -29,16 +30,17 @@ function spmr_sc(K::SPMatrix, g::AbstractVector{<:Real};
         σ, ρ̄ = Ω * [zero(SI.γ), SI.γ]   # σ_{k+1}, ρ̄_{k+1}
         ϕ, ϕ̄ = Ω * [ϕ̄, zero(ϕ̄)]         # ϕ_k, ϕ̄_{k+1}
 
-        BLAS.axpy!(ϕ/ρ, d, x)   # x_k
+        BLAS.axpy!(ϕ/ρ, d, x)               # x_k
         BLAS.scal!(n, -σ/ρ, d, 1)
-        BLAS.axpy!(1, SI.u, d)  # d_{k+1}
+        BLAS.axpy!(one(Float64), SI.u, d)   # d_{k+1}
 
         λ = copysign(ρ * α_prev, ξ_prev)                        # λ_k
-        T[:, 1] .= (T[:, 1] - μ * T[:, 2] - ν * T[:, 3]) / λ    # t_k
-        BLAS.axpy!(-ϕ, T[:, 1], y)                              # y_k
+        T[:, 1] .= BLAS.gemv('N', T, [one(Float64), -μ, -ν])
+        BLAS.scal!(m, inv(λ), t, 1)                             # t_k
+        BLAS.axpy!(-ϕ, t, y)                                    # y_k
 
         T .= circshift(T, (0, 1))
-        BLAS.blascopy!(m, SI.v, 1, T, 1)
+        BLAS.blascopy!(m, SI.v, 1, t, 1)
         μ = copysign(ρ * SI.β, ξ_prev) + copysign(σ * SI.α, SI.ξ)   # μ_{k+1}
         ν = copysign(σ_prev * SI.β, ξ_prev)                         # ν_{k+1}
 
@@ -48,5 +50,5 @@ function spmr_sc(K::SPMatrix, g::AbstractVector{<:Real};
         resvec[SI.k] < tol && return SPMRResult(x, y, CONVERGED, SI.k, resvec[1:SI.k])
     end
 
-    return SPMRResult(x, y, CONVERGED, m, resvec)
+    return SPMRResult(x, y, MAXIT_EXCEEDED, m, resvec)
 end
