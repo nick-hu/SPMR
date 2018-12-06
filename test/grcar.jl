@@ -1,4 +1,4 @@
-# Grcar matrix tests
+# Grcar benchmark
 
 function grcar(n::Int, k::Int=3)
     A = spzeros(Int, n, n)
@@ -12,17 +12,24 @@ function grcar(n::Int, k::Int=3)
     return A
 end
 
-@testset "Grcar: SPMR-SC" begin
-    n, m = 1000, 500
+n, m = 2000, 1000
 
-    A = grcar(n)
-    F = sprand(m, n÷2, 0.1) + 100I
-    G₁ = [F F]
-    K = SPMatrix(A, G₁', G₁)
+A = grcar(n)
+#F = sprand(m, n÷2, 0.1) + 100I
+F = Matrix(100I, m, m)
+G₁ = [F F]
+K = SPMatrix(A, G₁', G₁)
 
-    g = rand(m)
+#g = rand(m)
+g = ones(m)
 
-    x_exact = K \ [zeros(n); g]
+b = [zeros(n); g]
+x_exact = K \ b
 
-    result = spmr_sc(K, g, tol=1e-10, maxit=2m)
-end
+#=
+Profile.clear()
+@profile result = spmr_sc(K, g, tol=1e-10, maxit=2m)
+ProfileView.view()
+=#
+@time result = spmr_sc(K, g, tol=1e-10, maxit=2m)
+#println(result.resvec)

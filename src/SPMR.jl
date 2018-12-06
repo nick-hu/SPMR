@@ -8,7 +8,11 @@ const RealMatrix = AbstractMatrix{<:Real}
 const FloatFact = Factorization{Float64}
 const RealFact = Factorization{<:Real}
 
-@enum SPMRFlag CONVERGED=0 MAXIT_EXCEEDED=1 OTHER=2
+@enum SPMRFlag begin
+    CONVERGED
+    MAXIT_EXCEEDED
+    OTHER
+end
 
 struct SPMRResult
     x::Vector{Float64}

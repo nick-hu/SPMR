@@ -16,11 +16,11 @@ struct SimbaIterate
     z::Vector{Float64}
 end
 
-struct SimbaScIterator{T<:Factorization{Float64}, U<:FloatMatrix, V<:FloatMatrix}
+struct SimbaScIterator{T<:FloatFact, U<:FloatFact, V<:FloatMatrix, W<:FloatMatrix}
     A::T
-    Aᵀ::T
-    G₁ᵀ::U
-    G₂::V
+    Aᵀ::U
+    G₁ᵀ::V
+    G₂::W
 
     SI₀::SimbaIterate
 end
@@ -80,9 +80,9 @@ function Base.iterate(SSI::SimbaScIterator, SI_prev::SimbaIterate=SSI.SI₀)
     BLAS.axpy!(-SI_prev.γ, SI_prev.z, z)
 
     β = BLAS.nrm2(m, v, 1)
-    BLAS.scal!(m, inv(β), v, 1)
+    normalize!(v)
     δ = BLAS.nrm2(m, z, 1)
-    BLAS.scal!(m, inv(δ), z, 1)
+    normalize!(z)
 
     û = Vector{Float64}(undef, n)
     ŵ = Vector{Float64}(undef, n)

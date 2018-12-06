@@ -10,7 +10,7 @@ struct SPMatrix{T<:FloatMatrix, U<:FloatMatrix, V<:FloatMatrix} <: FloatMatrix
     function SPMatrix{T, U, V}(A, G₁ᵀ, G₂) where {T<:FloatMatrix, U<:FloatMatrix,
                                                   V<:FloatMatrix}
         n = checksquare(A)
-        m = size(G₁ᵀ, 2)
+        m = size(G₂, 1)
 
         if size(G₁ᵀ) ≠ (n, m)
             throw(DimensionMismatch("G₁ᵀ should have size ($n, $m)"))
