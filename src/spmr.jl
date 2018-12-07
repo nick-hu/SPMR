@@ -7,25 +7,25 @@ function spmr_sc(K::SPMatrix, g::AbstractVector{<:Real};
     n, m = block_sizes(K)
 
     x, y = zeros(n), zeros(m)
-    SSI = simba_sc(K, g, g)
+    SSI, SI₀ = simba_sc(K, g, g)
 
-    abs(SSI.SI₀.ξ) < eps() && return SPMRResult(x, y, OTHER, SSI.SI₀.k, Float64[])
+    abs(SI₀.ξ) < eps() && return SPMRResult(x, y, OTHER, 0, Float64[])
 
-    ρ̄, ϕ̄ = SSI.SI₀.γ, SSI.SI₀.δ
-    d = SSI.SI₀.u
+    ρ̄, ϕ̄ = SI₀.γ, SI₀.δ
+    d = SI₀.u
 
-    T = Matrix{Float64}(undef, m, 3)
+    T = zeros(m, 3)
     t, t_prev, t_prev2 = @view(T[:, 1]), @view(T[:, 2]), @view(T[:, 3])
 
-    BLAS.blascopy!(m, SSI.SI₀.v, 1, t, 1)
+    BLAS.blascopy!(m, SI₀.v, 1, t, 1)
     μ, ν = zero(Float64), zero(Float64)
-    α_prev, ξ_prev, σ_prev = SSI.SI₀.α, SSI.SI₀.ξ, zero(Float64)
+    α_prev, ξ_prev, σ_prev = SI₀.α, SI₀.ξ, zero(Float64)
 
     resvec = Vector{Float64}(undef, min(m, maxit))
 
-    for SI in SSI
-        SI.k > maxit && return SPMRResult(x, y, MAXIT_EXCEEDED, maxit, resvec[1:maxit])
-        abs(SI.ξ) < eps() && return SPMRResult(x, y, OTHER, SI.k - 1, resvec[1:SI.k - 1])
+    for (k, SI) in enumerate(SSI)
+        k > maxit && return SPMRResult(x, y, MAXIT_EXCEEDED, maxit, resvec[1:maxit])
+        abs(SI.ξ) < eps() && return SPMRResult(x, y, OTHER, k-1, resvec[1:k-1])
 
         Ω, ρ = givens(ρ̄, SI.δ, 1, 2)    # ρ_k
         σ, ρ̄ = Ω.s * SI.γ, Ω.c * SI.γ   # σ_{k+1}, ρ̄_{k+1}
@@ -46,8 +46,8 @@ function spmr_sc(K::SPMatrix, g::AbstractVector{<:Real};
 
         α_prev, ξ_prev, σ_prev = SI.α, SI.ξ, σ
 
-        resvec[SI.k] = SI.k == 1 ? Ω.s : resvec[SI.k - 1] * Ω.s     # Rel. res. norm
-        resvec[SI.k] < tol && return SPMRResult(x, y, CONVERGED, SI.k, resvec[1:SI.k])
+        resvec[k] = k == 1 ? Ω.s : resvec[k-1] * Ω.s     # Rel. res. norm
+        resvec[k] < tol && return SPMRResult(x, y, CONVERGED, k, resvec[1:k])
     end
 
     return SPMRResult(x, y, MAXIT_EXCEEDED, m, resvec)

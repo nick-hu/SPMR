@@ -41,53 +41,21 @@ using SPMR: simba_sc
 
 end
 
-@testset "SPMatrix get/set" begin
-
-    @testset "Basic get/set" begin
-        K = SPMatrix(zeros(4, 4), 3)
-
-        K[1, 1] = 1
-        K[1, 4] = 2
-        K[4, 1] = 3
-
-        @test K.A[1, 1] == 1
-        @test K.G₁ᵀ[1, 1] == 2
-        @test K.G₂[1, 1] == 3
-        @test K[4, 4] == 0
-    end
-
-    @testset "Out of bounds get/set" begin
-        K = SPMatrix(zeros(4, 4), 3)
-
-        @test_throws BoundsError K[5, 4]
-        @test_throws BoundsError K[4, 5]
-        @test_throws BoundsError K[5, 4] = 0
-        @test_throws BoundsError K[4, 5] = 0
-    end
-
-    @testset "Set in zero block" begin
-        K = SPMatrix(zeros(4, 4), 1)
-
-        @test_throws ArgumentError K[2, 2] = 1
-    end
-
-end
-
 @testset "SIMBA-SC" begin
     n, m = 3, 2
     K = SPMatrix(rand(n+m, n+m), n)
-    A, G₁ᵀ, G₂ = K.A, K.G₁ᵀ, K.G₂
+    A, G₁ᵀ, G₂ = Matrix(K.A), K.G₁ᵀ, K.G₂
     b, c = rand(m), rand(m)
 
     @testset "Iterator construction" begin
-        SSI = simba_sc(K, b, c)
+        SSI, _ = simba_sc(K, b, c)
 
-        @test Matrix(SSI.A) ≈ A
-        @test SSI.G₁ᵀ == G₁ᵀ
-        @test SSI.G₂ == G₂
+        @test Matrix(SSI.K.A) == A
+        @test SSI.K.G₁ᵀ == G₁ᵀ
+        @test SSI.K.G₂ == G₂
     end
 
-    SSI = simba_sc(K, b, c)
+    SSI, SI₀ = simba_sc(K, b, c)
 
     @testset "Iteration" begin
         k = 0
@@ -100,7 +68,7 @@ end
     end
 
     @testset "Iteration correctness" begin
-        SI_prev = SSI.SI₀
+        SI_prev = SI₀
 
         @test SI_prev.β * SI_prev.v ≈ b
         @test SI_prev.δ * SI_prev.z ≈ c
@@ -109,8 +77,6 @@ end
         @test A' * (copysign(SI_prev.γ, SI_prev.ξ) * SI_prev.w) ≈ G₂' * SI_prev.z
 
         for (k, SI) in enumerate(SSI)
-            @test SI.k == k
-
             @test SI.β * SI.v ≈ G₁ᵀ' * SI_prev.w - SI_prev.α * SI_prev.v
             @test SI.δ * SI.z ≈ G₂ * SI_prev.u - SI_prev.γ * SI_prev.z
 
@@ -143,7 +109,7 @@ end
         b = [zeros(n); g]
         x = [result.x; result.y]
 
-        @test norm(b - K * x) / norm(b) ≈ result.resvec[end]
+        @test norm(b - Matrix(K) * x) / norm(b) ≈ result.resvec[end]
     end
 
     @testset "Monotonic decrease of residual norm" begin

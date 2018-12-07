@@ -18,13 +18,16 @@ A = grcar(n)
 #F = sprand(m, n÷2, 0.1) + 100I
 F = Matrix(100I, m, m)
 G₁ = [F F]
+#A⁻¹_map = InvLinearMap(b -> A \ b, b -> A' \ b, n)
+#G₁ᵀ_map = LinearMap(x -> G₁' * x, x -> G₁ * x, n, m)
+#G₂_map = LinearMap(x -> G₁ * x, x -> G₁' * x, m, n)
 K = SPMatrix(A, G₁', G₁)
+#K = SPMatrix(A⁻¹_map, G₁ᵀ_map, G₂_map)
 
 #g = rand(m)
 g = ones(m)
 
 b = [zeros(n); g]
-x_exact = K \ b
 
 #=
 Profile.clear()
@@ -32,4 +35,3 @@ Profile.clear()
 ProfileView.view()
 =#
 @time result = spmr_sc(K, g, tol=1e-10, maxit=2m)
-#println(result.resvec)
