@@ -3,24 +3,24 @@ using Test, LinearAlgebra, SparseArrays
 using SPMR
 using SPMR: simba_sc
 
-@testset "SPMatrix construction" begin
+@testset "SpmrScMatrix construction" begin
 
     @testset "Construction from float matrix" begin
         M = rand(2, 2)
-        K = SPMatrix(M, M, M)
+        K = SpmrScMatrix(M, M, M)
 
         @test size(K) == (4, 4)
     end
 
     @testset "Construction from real matrix" begin
         M = rand(Int, 2, 2)
-        K = SPMatrix(M, M, M)
+        K = SpmrScMatrix(M, M, M)
 
         @test size(K) == (4, 4)
     end
 
     @testset "Conversion from square matrix" begin
-        K = SPMatrix(rand(4, 4), 3)
+        K = SpmrScMatrix(rand(4, 4), 3)
 
         @test size(K) == (4, 4)
         @test size(K.A) == (3, 3)
@@ -29,21 +29,21 @@ using SPMR: simba_sc
     end
 
     @testset "Conversion from self" begin
-        K = SPMatrix(rand(4, 4), 2)
+        K = SpmrScMatrix(rand(4, 4), 2)
 
-        @test SPMatrix(K) == K
+        @test SpmrScMatrix(K) == K
     end
 
     @testset "Construction from rectangular matrix" begin
-        @test_throws DimensionMismatch K = SPMatrix(rand(4, 3), 2)
-        @test_throws DimensionMismatch K = SPMatrix(rand(2, 2), rand(1, 2), rand(2, 2))
+        @test_throws DimensionMismatch K = SpmrScMatrix(rand(4, 3), 2)
+        @test_throws DimensionMismatch K = SpmrScMatrix(rand(2, 2), rand(1, 2), rand(2, 2))
     end
 
 end
 
 @testset "SIMBA-SC" begin
     n, m = 3, 2
-    K = SPMatrix(rand(n+m, n+m), n)
+    K = SpmrScMatrix(rand(n+m, n+m), n)
     A, G₁ᵀ, G₂ = Matrix(K.A), K.G₁ᵀ, K.G₂
     b, c = rand(m), rand(m)
 
@@ -100,7 +100,7 @@ end
 
 @testset "SPMR-SC" begin
     n, m = 100, 70
-    K = SPMatrix(rand(n+m, n+m), n)
+    K = SpmrScMatrix(rand(n+m, n+m), n)
     g = rand(m)
 
     @testset "Relative residual" begin

@@ -23,16 +23,47 @@ function Base.convert(::Type{FloatOperator}, A::RealOperator)
 end
 
 
-@enum SPMRFlag begin
+struct SpmrScIterate
+    α::Float64
+    β::Float64
+    γ::Float64
+    δ::Float64
+
+    ξ::Float64
+
+    u::Vector{Float64}
+    v::Vector{Float64}
+    w::Vector{Float64}
+    z::Vector{Float64}
+end
+
+struct SpmrNsIterate
+    α::Float64
+    β::Float64
+    γ::Float64
+    δ::Float64
+
+    ξ::Float64
+
+    u::Vector{Float64}
+    v::Vector{Float64}
+    w::Vector{Float64}
+    z::Vector{Float64}
+
+    û::Vector{Float64}
+    ŵ::Vector{Float64}
+end
+
+@enum SpmrFlag begin
     CONVERGED
     MAXIT_EXCEEDED
     OTHER
 end
 
-struct SPMRResult
+struct SpmrResult
     x::Vector{Float64}
     y::Vector{Float64}
-    flag::SPMRFlag
+    flag::SpmrFlag
     iter::Int
     resvec::Vector{Float64}
 end

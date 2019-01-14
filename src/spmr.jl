@@ -1,15 +1,18 @@
 # SPMR: Saddle-point minimum residual
 
-export spmr_sc
+export
+    spmr_sc, spmr_ns
 
-function spmr_sc(K::SPMatrix, g::AbstractVector{<:Real};
+# SPMR-SC
+
+function spmr_sc(K::SpmrScMatrix, g::AbstractVector{<:Real};
                  tol::Float64=1e-6, maxit::Int=10)
     n, m = block_sizes(K)
 
     x, y = zeros(n), zeros(m)
     SSI, SI₀ = simba_sc(K, g, g)
 
-    abs(SI₀.ξ) < eps() && return SPMRResult(x, y, OTHER, 0, Float64[])
+    abs(SI₀.ξ) < eps() && return SpmrResult(x, y, OTHER, 0, Float64[])
 
     ρ̄, ϕ̄ = SI₀.γ, SI₀.δ
     d = SI₀.u
@@ -24,8 +27,8 @@ function spmr_sc(K::SPMatrix, g::AbstractVector{<:Real};
     resvec = Vector{Float64}(undef, min(m, maxit))
 
     for (k, SI) in enumerate(SSI)
-        k > maxit && return SPMRResult(x, y, MAXIT_EXCEEDED, maxit, resvec[1:maxit])
-        abs(SI.ξ) < eps() && return SPMRResult(x, y, OTHER, k-1, resvec[1:k-1])
+        k > maxit && return SpmrResult(x, y, MAXIT_EXCEEDED, maxit, resvec[1:maxit])
+        abs(SI.ξ) < eps() && return SpmrResult(x, y, OTHER, k-1, resvec[1:k-1])
 
         Ω, ρ = givens(ρ̄, SI.δ, 1, 2)    # ρ_k
         σ, ρ̄ = Ω.s * SI.γ, Ω.c * SI.γ   # σ_{k+1}, ρ̄_{k+1}
@@ -47,8 +50,44 @@ function spmr_sc(K::SPMatrix, g::AbstractVector{<:Real};
         α_prev, ξ_prev, σ_prev = SI.α, SI.ξ, σ
 
         resvec[k] = k == 1 ? Ω.s : resvec[k-1] * Ω.s     # Rel. res. norm
-        resvec[k] < tol && return SPMRResult(x, y, CONVERGED, k, resvec[1:k])
+        resvec[k] < tol && return SpmrResult(x, y, CONVERGED, k, resvec[1:k])
     end
 
-    return SPMRResult(x, y, MAXIT_EXCEEDED, m, resvec)
+    return SpmrResult(x, y, MAXIT_EXCEEDED, m, resvec)
+end
+
+# SPMR-NS
+
+function spmr_ns(K::SpmrNsMatrix, f::AbstractVector{<:Real};
+                 tol::Float64=1e-6, maxit::Int=10)
+    n, m = block_sizes(K)
+
+    p = zeros(n)
+    y = Vector{Float64}(undef, m)
+    SNI, SI₀ = simba_ns(K, -K.H₂' * f, -K.H₁' * f)
+
+    abs(SI₀.ξ) < eps() && return SpmrResult(-p, y, OTHER, 0, Float64[])
+
+    ρ̄, ϕ̄ = SI₀.γ, SI₀.δ
+    d = SI₀.u
+
+    resvec = Vector{Float64}(undef, min(n-m, maxit))
+
+    for (k, SI) in enumerate(SNI)
+        k > maxit && return SpmrResult(-p, y, MAXIT_EXCEEDED, maxit, resvec[1:maxit])
+        abs(SI.ξ) < eps() && return SpmrResult(-p, y, OTHER, k-1, resvec[1:k-1])
+
+        Ω, ρ = givens(ρ̄, SI.δ, 1, 2)    # ρ_k
+        σ, ρ̄ = Ω.s * SI.γ, Ω.c * SI.γ   # σ_{k+1}, ρ̄_{k+1}
+        ϕ, ϕ̄ = Ω.c * ϕ̄, -Ω.s * ϕ̄        # ϕ_k, ϕ̄_{k+1}
+
+        BLAS.axpy!(ϕ/ρ, d, p)       # p_k
+        BLAS.scal!(n, -σ/ρ, d, 1)
+        d .+= SI.u                  # d_{k+1}
+
+        resvec[k] = k == 1 ? Ω.s : resvec[k-1] * Ω.s     # Rel. res. norm
+        resvec[k] < tol && return SpmrResult(-p, y, CONVERGED, k, resvec[1:k])
+    end
+
+    return SpmrResult(-p, y, MAXIT_EXCEEDED, m, resvec)
 end

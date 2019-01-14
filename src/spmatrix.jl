@@ -1,17 +1,26 @@
 # Saddle-point matrices
 
-export SPMatrix
+export
+    SpmrMatrix,
+    SpmrScMatrix, SpmrNsMatrix
 
-struct SPMatrix{T<:FloatInvOperator, U<:FloatInvOperator, V<:FloatOperator, W<:FloatOperator}
+abstract type SpmrMatrix end
+
+# -SC family
+
+struct SpmrScMatrix{T<:FloatInvOperator,
+                    U<:FloatInvOperator,
+                    V<:FloatOperator,
+                    W<:FloatOperator} <: SpmrMatrix
     A::T
     Aᵀ::U
     G₁ᵀ::V
     G₂::W
 
-    function SPMatrix{T, U, V, W}(A, Aᵀ, G₁ᵀ, G₂) where {T<:FloatInvOperator,
-                                                         U<:FloatInvOperator,
-                                                         V<:FloatOperator,
-                                                         W<:FloatOperator}
+    function SpmrScMatrix{T, U, V, W}(A, Aᵀ, G₁ᵀ, G₂) where {T<:FloatInvOperator,
+                                                             U<:FloatInvOperator,
+                                                             V<:FloatOperator,
+                                                             W<:FloatOperator}
         n = checksquare(A)
         m = size(G₂, 1)
 
@@ -31,61 +40,56 @@ struct SPMatrix{T<:FloatInvOperator, U<:FloatInvOperator, V<:FloatOperator, W<:F
     end
 end
 
-function SPMatrix(A::T, Aᵀ::U, G₁ᵀ::V, G₂::W) where {T<:FloatInvOperator,
-                                                     U<:FloatInvOperator,
-                                                     V<:FloatOperator,
-                                                     W<:FloatOperator}
-    return SPMatrix{T, U, V, W}(A, Aᵀ, G₁ᵀ, G₂)
+function SpmrScMatrix(A::T, Aᵀ::U, G₁ᵀ::V, G₂::W) where {T<:FloatInvOperator,
+                                                         U<:FloatInvOperator,
+                                                         V<:FloatOperator,
+                                                         W<:FloatOperator}
+    return SpmrScMatrix{T, U, V, W}(A, Aᵀ, G₁ᵀ, G₂)
 end
 
-function SPMatrix(A::T, G₁ᵀ::V, G₂::W) where {T<:InvLinearMap{Float64},
-                                              V<:RealOperator,
-                                              W<:RealOperator}
+function SpmrScMatrix(A::T, G₁ᵀ::V, G₂::W) where {T<:InvLinearMap{Float64},
+                                                  V<:RealOperator,
+                                                  W<:RealOperator}
     if !checktranspose(A.map)
         error("Left-division by Aᵀ should be implemented")
     end
 
     Aᵀ = issymmetric(A.map) ? A : InvLinearMap(transpose(A.map))
 
-    return SPMatrix(A, Aᵀ, convert(FloatOperator, G₁ᵀ), convert(FloatOperator, G₂))
+    return SpmrScMatrix(A, Aᵀ, convert(FloatOperator, G₁ᵀ), convert(FloatOperator, G₂))
 end
 
-function SPMatrix(A::T, G₁ᵀ::V, G₂::W) where {T<:FloatMatrix,
-                                              V<:FloatOperator,
-                                              W<:FloatOperator}
+function SpmrScMatrix(A::T, G₁ᵀ::V, G₂::W) where {T<:FloatMatrix,
+                                                  V<:FloatOperator,
+                                                  W<:FloatOperator}
     F = factorize(A)
     Fᵀ = issymmetric(A) ? F : factorize(copy(transpose(A)))
 
-    return SPMatrix(F, Fᵀ, G₁ᵀ, G₂)
+    return SpmrScMatrix(F, Fᵀ, G₁ᵀ, G₂)
 end
 
-function SPMatrix(A::T, G₁ᵀ::V, G₂::W) where {T<:RealMatrix,
-                                              V<:RealOperator,
-                                              W<:RealOperator}
-    return SPMatrix(convert(FloatMatrix, A),
-                    convert(FloatOperator, G₁ᵀ),
-                    convert(FloatOperator, G₂))
+function SpmrScMatrix(A::T, G₁ᵀ::V, G₂::W) where {T<:RealMatrix,
+                                                  V<:RealOperator,
+                                                  W<:RealOperator}
+    return SpmrScMatrix(convert(FloatMatrix, A),
+                        convert(FloatOperator, G₁ᵀ),
+                        convert(FloatOperator, G₂))
 end
 
-function SPMatrix(K::RealMatrix, n::Integer)
-    return SPMatrix(K[1:n, 1:n], K[1:n, n+1:end], K[n+1:end, 1:n])
+function SpmrScMatrix(K::RealMatrix, n::Integer)
+    return SpmrScMatrix(K[1:n, 1:n], K[1:n, n+1:end], K[n+1:end, 1:n])
 end
 
-SPMatrix(K::SPMatrix) = K
+SpmrScMatrix(K::SpmrScMatrix) = K
 
-Base.size(K::SPMatrix) = (size(K.A, 1) + size(K.G₂, 1),
-                          size(K.A, 2) + size(K.G₁ᵀ, 2))
-
-block_sizes(K::SPMatrix) = (size(K.A, 1), size(K.G₂, 1))
-
-function Base.Matrix(K::SPMatrix)
+function Base.Matrix(K::SpmrScMatrix)
     _, m = block_sizes(K)
 
     return [convert(Matrix, K.A) convert(Matrix, K.G₁ᵀ);
             convert(Matrix, K.G₂) zeros(m, m)]
 end
 
-function SparseArrays.sparse(K::SPMatrix)
+function SparseArrays.sparse(K::SpmrScMatrix)
     _, m = block_sizes(K)
 
     try
@@ -97,10 +101,82 @@ function SparseArrays.sparse(K::SPMatrix)
     end
 end
 
-Base.Array(K::SPMatrix) = Matrix(K)
-Base.convert(::Type{Matrix}, K::SPMatrix) = Matrix(K)
-Base.convert(::Type{Array}, K::SPMatrix) = Array(K)
-Base.convert(::Type{SparseMatrixCSC}, K::SPMatrix) = sparse(K)
+Base.Array(K::SpmrScMatrix) = Matrix(K)
+Base.convert(::Type{Matrix}, K::SpmrScMatrix) = Matrix(K)
+Base.convert(::Type{Array}, K::SpmrScMatrix) = Array(K)
+Base.convert(::Type{SparseMatrixCSC}, K::SpmrScMatrix) = sparse(K)
+
+Base.size(K::SpmrScMatrix) = (size(K.A, 1) + size(K.G₂, 1),
+                              size(K.A, 2) + size(K.G₁ᵀ, 2))
+
+block_sizes(K::SpmrScMatrix) = (size(K.A, 1), size(K.G₂, 1))
+
+# -NS family
+
+struct SpmrNsMatrix{T<:FloatOperator,
+                    U<:FloatOperator,
+                    V<:FloatOperator} <: SpmrMatrix
+    A::T
+    H₁::U
+    H₂::V
+
+    m::Int
+
+    function SpmrNsMatrix{T, U, V}(A, H₁, H₂, m) where {T<:FloatOperator,
+                                                        U<:FloatOperator,
+                                                        V<:FloatOperator}
+        n = checksquare(A)
+
+        if size(H₁, 1) ≠ n
+            throw(DimensionMismatch("H₁ should have $n rows"))
+        elseif size(H₂, 1) ≠ n
+            throw(DimensionMismatch("H₂ should have $n rows"))
+        end
+
+        if !checktranspose(H₁)
+            error("Left-multiplication by H₁ᵀ should be implemented")
+        elseif !checktranspose(H₂)
+            error("Left-multiplication by H₂ᵀ should be implemented")
+        end
+
+        return new{T, U, V}(A, H₁, H₂, m)
+    end
+end
+
+function SpmrNsMatrix(A::T, H₁::U, H₂::V, m::Int) where {T<:FloatOperator,
+                                                         U<:FloatOperator,
+                                                         V<:FloatOperator}
+    return SpmrNsMatrix{T, U, V}(A, H₁, H₂, m)
+end
+
+function SpmrNsMatrix(A::T, H₁::U, H₂::V, m::Integer) where {T<:LinearMap{Float64},
+                                                             U<:RealOperator,
+                                                             V<:RealOperator}
+    if !checktranspose(A)
+        error("Left-multiplication by Aᵀ should be implemented")
+    end
+
+    return SpmrNsMatrix(A,
+                        convert(FloatOperator, H₁),
+                        convert(FloatOperator, H₂),
+                        convert(Int, m))
+end
+
+function SpmrNsMatrix(A::T, H₁::U, H₂::V, m::Integer) where {T<:RealMatrix,
+                                                             U<:RealOperator,
+                                                             V<:RealOperator}
+    return SpmrNsMatrix(convert(FloatMatrix, A),
+                        convert(FloatOperator, H₁),
+                        convert(FloatOperator, H₂),
+                        convert(Int, m))
+end
+
+SpmrNsMatrix(K::SpmrNsMatrix) = K
+
+block_sizes(K::SpmrNsMatrix) = (size(K.A, 1), K.m)
+nullities(K::SpmrNsMatrix) = (size(K.H₁, 2), size(K.H₂, 2))
+
+# Helper functions
 
 function checktranspose(A::RealOperator)
     return !(isa(A, FunctionMap) && !issymmetric(A) && A.fc == nothing)
