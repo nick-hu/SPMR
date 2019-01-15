@@ -7,6 +7,9 @@ using LinearAlgebra: checksquare
 
 using LinearMaps: LinearMap, FunctionMap, A_mul_B!, At_mul_B!, Ac_mul_B!
 
+export
+    recover_y
+
 include("invfunctionmap.jl")
 
 
@@ -60,9 +63,16 @@ end
     OTHER
 end
 
-struct SpmrResult
+struct SpmrScResult
     x::Vector{Float64}
     y::Vector{Float64}
+    flag::SpmrFlag
+    iter::Int
+    resvec::Vector{Float64}
+end
+
+struct SpmrNsResult
+    x::Vector{Float64}
     flag::SpmrFlag
     iter::Int
     resvec::Vector{Float64}
@@ -72,5 +82,12 @@ include("spmatrix.jl")
 
 include("simba.jl")
 include("spmr.jl")
+
+function recover_y(result::SpmrNsResult, K::SpmrNsMatrix, G₁ᵀ::RealMatrix, f::Vector{<:Real})
+    Ax = Vector{Float64}(undef, block_sizes(K)[1])
+    mul!(Ax, K.A, result.x)
+
+    return G₁ᵀ \ (f - Ax)
+end
 
 end # module

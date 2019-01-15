@@ -12,7 +12,7 @@ function spmr_sc(K::SpmrScMatrix, g::AbstractVector{<:Real};
     x, y = zeros(n), zeros(m)
     SSI, SI₀ = simba_sc(K, g, g)
 
-    abs(SI₀.ξ) < eps() && return SpmrResult(x, y, OTHER, 0, Float64[])
+    abs(SI₀.ξ) < eps() && return SpmrScResult(x, y, OTHER, 0, Float64[])
 
     ρ̄, ϕ̄ = SI₀.γ, SI₀.δ
     d = SI₀.u
@@ -27,8 +27,8 @@ function spmr_sc(K::SpmrScMatrix, g::AbstractVector{<:Real};
     resvec = Vector{Float64}(undef, min(m, maxit))
 
     for (k, SI) in enumerate(SSI)
-        k > maxit && return SpmrResult(x, y, MAXIT_EXCEEDED, maxit, resvec[1:maxit])
-        abs(SI.ξ) < eps() && return SpmrResult(x, y, OTHER, k-1, resvec[1:k-1])
+        k > maxit && return SpmrScResult(x, y, MAXIT_EXCEEDED, maxit, resvec[1:maxit])
+        abs(SI.ξ) < eps() && return SpmrScResult(x, y, OTHER, k-1, resvec[1:k-1])
 
         Ω, ρ = givens(ρ̄, SI.δ, 1, 2)    # ρ_k
         σ, ρ̄ = Ω.s * SI.γ, Ω.c * SI.γ   # σ_{k+1}, ρ̄_{k+1}
@@ -50,10 +50,10 @@ function spmr_sc(K::SpmrScMatrix, g::AbstractVector{<:Real};
         α_prev, ξ_prev, σ_prev = SI.α, SI.ξ, σ
 
         resvec[k] = k == 1 ? Ω.s : resvec[k-1] * Ω.s     # Rel. res. norm
-        resvec[k] < tol && return SpmrResult(x, y, CONVERGED, k, resvec[1:k])
+        resvec[k] < tol && return SpmrScResult(x, y, CONVERGED, k, resvec[1:k])
     end
 
-    return SpmrResult(x, y, MAXIT_EXCEEDED, m, resvec)
+    return SpmrScResult(x, y, MAXIT_EXCEEDED, m, resvec)
 end
 
 # SPMR-NS
@@ -63,10 +63,9 @@ function spmr_ns(K::SpmrNsMatrix, f::AbstractVector{<:Real};
     n, m = block_sizes(K)
 
     p = zeros(n)
-    y = Vector{Float64}(undef, m)
     SNI, SI₀ = simba_ns(K, -K.H₂' * f, -K.H₁' * f)
 
-    abs(SI₀.ξ) < eps() && return SpmrResult(-p, y, OTHER, 0, Float64[])
+    abs(SI₀.ξ) < eps() && return SpmrNsResult(-p, OTHER, 0, Float64[])
 
     ρ̄, ϕ̄ = SI₀.γ, SI₀.δ
     d = SI₀.u
@@ -74,8 +73,8 @@ function spmr_ns(K::SpmrNsMatrix, f::AbstractVector{<:Real};
     resvec = Vector{Float64}(undef, min(n-m, maxit))
 
     for (k, SI) in enumerate(SNI)
-        k > maxit && return SpmrResult(-p, y, MAXIT_EXCEEDED, maxit, resvec[1:maxit])
-        abs(SI.ξ) < eps() && return SpmrResult(-p, y, OTHER, k-1, resvec[1:k-1])
+        k > maxit && return SpmrNsResult(-p, MAXIT_EXCEEDED, maxit, resvec[1:maxit])
+        abs(SI.ξ) < eps() && return SpmrNsResult(-p, OTHER, k-1, resvec[1:k-1])
 
         Ω, ρ = givens(ρ̄, SI.δ, 1, 2)    # ρ_k
         σ, ρ̄ = Ω.s * SI.γ, Ω.c * SI.γ   # σ_{k+1}, ρ̄_{k+1}
@@ -86,8 +85,8 @@ function spmr_ns(K::SpmrNsMatrix, f::AbstractVector{<:Real};
         d .+= SI.u                  # d_{k+1}
 
         resvec[k] = k == 1 ? Ω.s : resvec[k-1] * Ω.s     # Rel. res. norm
-        resvec[k] < tol && return SpmrResult(-p, y, CONVERGED, k, resvec[1:k])
+        resvec[k] < tol && return SpmrNsResult(-p, CONVERGED, k, resvec[1:k])
     end
 
-    return SpmrResult(-p, y, MAXIT_EXCEEDED, m, resvec)
+    return SpmrNsResult(-p, MAXIT_EXCEEDED, m, resvec)
 end

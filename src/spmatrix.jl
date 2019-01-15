@@ -133,7 +133,9 @@ struct SpmrNsMatrix{T<:FloatOperator,
             throw(DimensionMismatch("H₂ should have $n rows"))
         end
 
-        if !checktranspose(H₁)
+        if !checktranspose(A)
+            error("Left-multiplication by Aᵀ should be implemented")
+        elseif !checktranspose(H₁)
             error("Left-multiplication by H₁ᵀ should be implemented")
         elseif !checktranspose(H₂)
             error("Left-multiplication by H₂ᵀ should be implemented")
@@ -149,23 +151,10 @@ function SpmrNsMatrix(A::T, H₁::U, H₂::V, m::Int) where {T<:FloatOperator,
     return SpmrNsMatrix{T, U, V}(A, H₁, H₂, m)
 end
 
-function SpmrNsMatrix(A::T, H₁::U, H₂::V, m::Integer) where {T<:LinearMap{Float64},
+function SpmrNsMatrix(A::T, H₁::U, H₂::V, m::Integer) where {T<:RealOperator,
                                                              U<:RealOperator,
                                                              V<:RealOperator}
-    if !checktranspose(A)
-        error("Left-multiplication by Aᵀ should be implemented")
-    end
-
-    return SpmrNsMatrix(A,
-                        convert(FloatOperator, H₁),
-                        convert(FloatOperator, H₂),
-                        convert(Int, m))
-end
-
-function SpmrNsMatrix(A::T, H₁::U, H₂::V, m::Integer) where {T<:RealMatrix,
-                                                             U<:RealOperator,
-                                                             V<:RealOperator}
-    return SpmrNsMatrix(convert(FloatMatrix, A),
+    return SpmrNsMatrix(convert(FloatOperator, A),
                         convert(FloatOperator, H₁),
                         convert(FloatOperator, H₂),
                         convert(Int, m))

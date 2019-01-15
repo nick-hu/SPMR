@@ -120,12 +120,11 @@ function simba_ns(K::SpmrNsMatrix, b::Vector{Float64}, c::Vector{Float64})
     mul!(u, K.H₂, v)
     mul!(w, K.H₁, z)
 
-    û = copy(u)
-    û .= K.A * û
-    #lmul!(K.A, u)
-    ŵ = copy(w)
-    #lmul!(K.A', w)
-    ŵ .= K.A' * ŵ
+    û = Vector{Float64}(undef, n)
+    ŵ = Vector{Float64}(undef, n)
+
+    mul!(û, K.A, u)
+    mul!(ŵ, K.A', w)
 
     ξ = û ⋅ w
 
@@ -156,8 +155,8 @@ function Base.iterate(SNI::SimbaNsIterator, k::Int=0)
     v = Vector{Float64}(undef, ℓ₂)
     z = Vector{Float64}(undef, ℓ₁)
 
-    BLAS.scal!(n, inv(SI_prev.γ), SI_prev.ŵ, 1)
-    BLAS.scal!(n, inv(SI_prev.α), SI_prev.û, 1)
+    BLAS.scal!(n, copysign(inv(SI_prev.γ), SI_prev.ξ), SI_prev.ŵ, 1)
+    BLAS.scal!(n, copysign(inv(SI_prev.α), SI_prev.ξ), SI_prev.û, 1)
 
     mul!(v, K.H₂', SI_prev.ŵ)
     BLAS.axpy!(-SI_prev.α, SI_prev.v, v)
@@ -177,12 +176,11 @@ function Base.iterate(SNI::SimbaNsIterator, k::Int=0)
     mul!(w, K.H₁, z)
     BLAS.axpy!(-copysign(δ, SI_prev.ξ), SI_prev.w, w)
 
-    û = copy(u)
-    #lmul!(K.A, u)
-    û .= K.A * û
-    ŵ = copy(w)
-    #lmul!(K.A', w)
-    ŵ .= K.A' * ŵ
+    û = Vector{Float64}(undef, n)
+    ŵ = Vector{Float64}(undef, n)
+
+    mul!(û, K.A, u)
+    mul!(ŵ, K.A', w)
 
     ξ = û ⋅ w
 
