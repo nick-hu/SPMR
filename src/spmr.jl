@@ -1,4 +1,4 @@
-# SPMR: Saddle-point minimum residual
+# SPMR: Saddle-point minimal residual
 
 export
     spmr_sc, spmr_ns
@@ -63,7 +63,8 @@ function spmr_ns(K::SpmrNsMatrix, f::AbstractVector{<:Real};
     n, m = block_sizes(K)
 
     p = zeros(n)
-    SNI, SI₀ = simba_ns(K, -K.H₂' * f, -K.H₁' * f)
+
+    SNI, SI₀ = simba_ns(K, K.H₂' * -f, K.H₁' * -f)
 
     abs(SI₀.ξ) < eps() && return SpmrNsResult(-p, OTHER, 0, Float64[])
 

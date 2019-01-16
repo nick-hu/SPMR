@@ -197,4 +197,4 @@ end
 
 Base.eltype(::Type{SimbaNsIterator}) = SpmrNsIterate
 
-Base.length(SNI::SimbaNsIterator) = block_sizes(SNI.K)[2]
+Base.length(SNI::SimbaNsIterator) = block_sizes(SNI.K)[1] - block_sizes(SNI.K)[2]

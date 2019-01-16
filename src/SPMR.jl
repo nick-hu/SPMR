@@ -81,7 +81,9 @@ end
 include("spmatrix.jl")
 
 include("simba.jl")
+include("simbo.jl")
 include("spmr.jl")
+include("spqmr.jl")
 
 function recover_y(result::SpmrNsResult, K::SpmrNsMatrix, G₁ᵀ::RealMatrix, f::Vector{<:Real})
     Ax = Vector{Float64}(undef, block_sizes(K)[1])
