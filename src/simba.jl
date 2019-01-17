@@ -33,8 +33,8 @@ function simba_sc(K::SpmrScMatrix, b::Vector{Float64}, c::Vector{Float64})
     α = sqrt(abs(ξ))
     γ = α
 
-    BLAS.scal!(n, copysign(inv(α), ξ), u, 1)
-    BLAS.scal!(n, copysign(inv(γ), ξ), w, 1)
+    BLAS.scal!(n, flipsign(inv(α), ξ), u, 1)
+    BLAS.scal!(n, flipsign(inv(γ), ξ), w, 1)
 
     SI = SpmrScIterate(α, β, γ, δ, ξ, u, v, w, z)
 
@@ -74,18 +74,18 @@ function Base.iterate(SSI::SimbaScIterator, k::Int=0)
 
     u = copy(û)
     ldiv!(K.A, u)
-    BLAS.axpy!(-copysign(β, SI_prev.ξ), SI_prev.u, u)
+    BLAS.axpy!(-flipsign(β, SI_prev.ξ), SI_prev.u, u)
     w = copy(ŵ)
     ldiv!(K.Aᵀ, w)
-    BLAS.axpy!(-copysign(δ, SI_prev.ξ), SI_prev.w, w)
+    BLAS.axpy!(-flipsign(δ, SI_prev.ξ), SI_prev.w, w)
 
     ξ = û ⋅ w
 
     α = sqrt(abs(ξ))
     γ = α
 
-    BLAS.scal!(n, copysign(inv(α), ξ), u, 1)
-    BLAS.scal!(n, copysign(inv(γ), ξ), w, 1)
+    BLAS.scal!(n, flipsign(inv(α), ξ), u, 1)
+    BLAS.scal!(n, flipsign(inv(γ), ξ), w, 1)
 
     SSI.SI = SpmrScIterate(α, β, γ, δ, ξ, u, v, w, z)
 
@@ -131,8 +131,8 @@ function simba_ns(K::SpmrNsMatrix, b::Vector{Float64}, c::Vector{Float64})
     α = sqrt(abs(ξ))
     γ = α
 
-    BLAS.scal!(n, copysign(inv(α), ξ), u, 1)
-    BLAS.scal!(n, copysign(inv(γ), ξ), w, 1)
+    BLAS.scal!(n, flipsign(inv(α), ξ), u, 1)
+    BLAS.scal!(n, flipsign(inv(γ), ξ), w, 1)
 
     SI = SpmrNsIterate(α, β, γ, δ, ξ, u, v, w, z, û, ŵ)
 
@@ -155,8 +155,8 @@ function Base.iterate(SNI::SimbaNsIterator, k::Int=0)
     v = Vector{Float64}(undef, ℓ₂)
     z = Vector{Float64}(undef, ℓ₁)
 
-    BLAS.scal!(n, copysign(inv(SI_prev.γ), SI_prev.ξ), SI_prev.ŵ, 1)
-    BLAS.scal!(n, copysign(inv(SI_prev.α), SI_prev.ξ), SI_prev.û, 1)
+    BLAS.scal!(n, flipsign(inv(SI_prev.γ), SI_prev.ξ), SI_prev.ŵ, 1)
+    BLAS.scal!(n, flipsign(inv(SI_prev.α), SI_prev.ξ), SI_prev.û, 1)
 
     mul!(v, K.H₂', SI_prev.ŵ)
     BLAS.axpy!(-SI_prev.α, SI_prev.v, v)
@@ -172,9 +172,9 @@ function Base.iterate(SNI::SimbaNsIterator, k::Int=0)
     w = Vector{Float64}(undef, n)
 
     mul!(u, K.H₂, v)
-    BLAS.axpy!(-copysign(β, SI_prev.ξ), SI_prev.u, u)
+    BLAS.axpy!(-flipsign(β, SI_prev.ξ), SI_prev.u, u)
     mul!(w, K.H₁, z)
-    BLAS.axpy!(-copysign(δ, SI_prev.ξ), SI_prev.w, w)
+    BLAS.axpy!(-flipsign(δ, SI_prev.ξ), SI_prev.w, w)
 
     û = Vector{Float64}(undef, n)
     ŵ = Vector{Float64}(undef, n)
@@ -187,8 +187,8 @@ function Base.iterate(SNI::SimbaNsIterator, k::Int=0)
     α = sqrt(abs(ξ))
     γ = α
 
-    BLAS.scal!(n, copysign(inv(α), ξ), u, 1)
-    BLAS.scal!(n, copysign(inv(γ), ξ), w, 1)
+    BLAS.scal!(n, flipsign(inv(α), ξ), u, 1)
+    BLAS.scal!(n, flipsign(inv(γ), ξ), w, 1)
 
     SNI.SI = SpmrNsIterate(α, β, γ, δ, ξ, u, v, w, z, û, ŵ)
 

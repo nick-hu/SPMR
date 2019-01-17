@@ -38,14 +38,14 @@ function spmr_sc(K::SpmrScMatrix, g::AbstractVector{<:Real};
         BLAS.scal!(n, -σ/ρ, d, 1)
         d .+= SI.u                  # d_{k+1}
 
-        λ = copysign(ρ * α_prev, ξ_prev)                # λ_k
+        λ = flipsign(ρ * α_prev, ξ_prev)                # λ_k
         T[:, 1] .= (t - μ * t_prev - ν * t_prev2) ./ λ  # t_k
         BLAS.axpy!(-ϕ, t, y)                            # y_k
 
         T .= circshift(T, (0, 1))
         BLAS.blascopy!(m, SI.v, 1, t, 1)
-        μ = copysign(ρ * SI.β, ξ_prev) + copysign(σ * SI.α, SI.ξ)   # μ_{k+1}
-        ν = copysign(σ_prev * SI.β, ξ_prev)                         # ν_{k+1}
+        μ = flipsign(ρ * SI.β, ξ_prev) + flipsign(σ * SI.α, SI.ξ)   # μ_{k+1}
+        ν = flipsign(σ_prev * SI.β, ξ_prev)                         # ν_{k+1}
 
         α_prev, ξ_prev, σ_prev = SI.α, SI.ξ, σ
 
