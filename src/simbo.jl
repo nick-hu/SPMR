@@ -10,7 +10,7 @@ mutable struct SimboScIterator
 end
 
 function simbo_sc(K::SpmrScMatrix, b::Vector{Float64}, c::Vector{Float64})
-    n, m = block_sizes(K)
+    n, _ = block_sizes(K)
 
     χ = c ⋅ b
 
@@ -110,7 +110,7 @@ mutable struct SimboNsIterator
 end
 
 function simbo_ns(K::SpmrNsMatrix, b::Vector{Float64}, c::Vector{Float64})
-    n, m = block_sizes(K)
+    n, _ = block_sizes(K)
 
     χ = c ⋅ b
 
@@ -125,9 +125,10 @@ function simbo_ns(K::SpmrNsMatrix, b::Vector{Float64}, c::Vector{Float64})
     mul!(u, K.H₂, v)
     mul!(w, K.H₁, z)
 
-    û = copy(u)
+    û = Vector{Float64}(undef, n)
+    ŵ = Vector{Float64}(undef, n)
+
     mul!(û, K.A, u)
-    ŵ = copy(w)
     mul!(ŵ, K.A', w)
 
     ξ = û ⋅ w

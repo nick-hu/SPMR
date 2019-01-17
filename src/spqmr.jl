@@ -76,9 +76,9 @@ function spqmr_ns(K::SpmrNsMatrix, f::AbstractVector{<:Real};
     p = zeros(n)
 
     fₕ = K.H₁' * -f
-    ℓ₁ = nullities(K)[1]
+    ℓ₁, _ = nullities(K)
 
-    SNI, SI₀ = simbo_ns(K, K.H₂' * -f, fₕ)
+    SNI, SI₀ = simbo_ns(K, fₕ, K.H₂' * -f)
 
     abs(SI₀.ξ) < eps() && return SpmrNsResult(-p, OTHER, 0, Float64[])
 
