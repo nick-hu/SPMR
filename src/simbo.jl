@@ -1,4 +1,4 @@
-# SIMBO: Simultaneous bidiagonalization via bi-orthogonality
+# SIMBO: Simultaneous bidiagonalization via biorthogonality
 
 # SIMBO-SC
 
@@ -18,8 +18,6 @@ function simbo_sc(K::SpmrScMatrix, b::Vector{Float64}, c::Vector{Float64})
     v = b / δ
     β = flipsign(δ, χ)
     z = c / β
-
-    # The rest is essentially the same as in SIMBA-SC
 
     û = Vector{Float64}(undef, n)
     ŵ = Vector{Float64}(undef, n)
@@ -72,8 +70,6 @@ function Base.iterate(SSI::SimboScIterator, k::Int=0)
     β = flipsign(δ, χ)
     BLAS.scal!(m, inv(β), z, 1)
 
-    # The rest is essentially the same as in SIMBA-SC
-
     û = Vector{Float64}(undef, n)
     ŵ = Vector{Float64}(undef, n)
 
@@ -82,17 +78,12 @@ function Base.iterate(SSI::SimboScIterator, k::Int=0)
 
     u = copy(û)
     ldiv!(K.A, u)
-    #println("A \\ u = $(u[1])")
     BLAS.axpy!(-flipsign(β, SI_prev.ξ), SI_prev.u, u)
-    #println("u[1] = $(u[1])")
     w = copy(ŵ)
     ldiv!(K.Aᵀ, w)
-    #println("Aᵀ \\ u = $(w[1])")
     BLAS.axpy!(-flipsign(δ, SI_prev.ξ), SI_prev.w, w)
-    #println("w[1] = $(w[1])")
 
     ξ = û ⋅ w
-    #println("ξ = $(ξ)")
 
     α = flipsign(sqrt(abs(ξ)), ξ)
     γ = α
@@ -102,134 +93,9 @@ function Base.iterate(SSI::SimboScIterator, k::Int=0)
 
     SSI.SI = SpmrScIterate(α, β, γ, δ, ξ, u, v, w, z)
 
-    #=
-    println("α: $α")
-    println("β: $β")
-    println("γ: $γ")
-    println("δ: $δ")
-    println("ξ: $ξ")
-    println("χ: $χ")
-    println("u[1]: $(u[1])")
-    println("v[1]: $(v[1])")
-    println("w[1]: $(w[1])")
-    println("z[1]: $(z[1])")
-    println()
-    =#
-
     return (SSI.SI, k+1)
 end
 
 Base.eltype(::Type{SimboScIterator}) = SpmrScIterate
 
 Base.length(SSI::SimboScIterator) = block_sizes(SSI.K)[2]
-
-# SIMBO-NS
-
-mutable struct SimboNsIterator
-    K::SpmrNsMatrix
-    SI::SpmrNsIterate
-
-    SI₀::SpmrNsIterate  # Remember SI₀ so that we can reiterate over SNI
-end
-
-function simbo_ns(K::SpmrNsMatrix, b::Vector{Float64}, c::Vector{Float64})
-    n, _ = block_sizes(K)
-    ℓ₁, ℓ₂ = nullities(K)
-
-    χ = c ⋅ b
-
-    δ = sqrt(abs(χ))
-    v = b / δ
-    β = flipsign(δ, χ)
-    z = c / β
-
-    # The rest is the same as in SIMBA-NS
-
-    u = Vector{Float64}(undef, n)
-    w = Vector{Float64}(undef, n)
-
-    mul!(u, K.H₂, v)
-    mul!(w, K.H₁, z)
-
-    û = Vector{Float64}(undef, n)
-    ŵ = Vector{Float64}(undef, n)
-
-    mul!(û, K.A, u)
-    mul!(ŵ, K.A', w)
-
-    ξ = û ⋅ w
-
-    α = sqrt(abs(ξ))
-    γ = α
-
-    BLAS.scal!(n, flipsign(inv(α), ξ), u, 1)
-    BLAS.scal!(n, flipsign(inv(γ), ξ), w, 1)
-
-    SI = SpmrNsIterate(α, β, γ, δ, ξ, u, v, w, z, û, ŵ)
-
-    return (SimboNsIterator(K, SI, SI), SI)
-end
-
-function simbo_ns(K::SpmrNsMatrix, b::AbstractVector{<:Real}, c::AbstractVector{<:Real})
-    return simbo_ns(K, convert(Vector{Float64}, b), convert(Vector{Float64}, c))
-end
-
-function Base.iterate(SNI::SimboNsIterator, k::Int=0)
-    n, m = block_sizes(SNI.K)
-    ℓ₁, ℓ₂ = nullities(SNI.K)
-
-    k == 0 && (SNI.SI = SNI.SI₀)
-    k ≥ n-m && return nothing
-
-    K, SI_prev = SNI.K, SNI.SI
-
-    v = Vector{Float64}(undef, ℓ₂)
-    z = Vector{Float64}(undef, ℓ₁)
-
-    BLAS.scal!(n, flipsign(inv(SI_prev.γ), SI_prev.ξ), SI_prev.ŵ, 1)
-    BLAS.scal!(n, flipsign(inv(SI_prev.α), SI_prev.ξ), SI_prev.û, 1)
-
-    mul!(v, K.H₁', SI_prev.û)
-    BLAS.axpy!(-SI_prev.γ, SI_prev.v, v)
-    mul!(z, K.H₂', SI_prev.ŵ)
-    BLAS.axpy!(-SI_prev.α, SI_prev.z, z)
-
-    χ = z ⋅ v
-
-    δ = sqrt(abs(χ))
-    BLAS.scal!(ℓ₂, inv(δ), v, 1)
-    β = flipsign(δ, χ)
-    BLAS.scal!(ℓ₁, inv(β), z, 1)
-
-    # The rest is the same as in SIMBA-NS
-
-    u = Vector{Float64}(undef, n)
-    w = Vector{Float64}(undef, n)
-
-    mul!(u, K.H₂, v)
-    BLAS.axpy!(-flipsign(β, SI_prev.ξ), SI_prev.u, u)
-    mul!(w, K.H₁, z)
-    BLAS.axpy!(-flipsign(δ, SI_prev.ξ), SI_prev.w, w)
-
-    û = Vector{Float64}(undef, n)
-    ŵ = Vector{Float64}(undef, n)
-
-    mul!(û, K.A, u)
-    mul!(ŵ, K.A', w)
-
-    ξ = û ⋅ w
-
-    α = sqrt(abs(ξ))
-    γ = α
-
-    BLAS.scal!(n, flipsign(inv(α), ξ), u, 1)
-    BLAS.scal!(n, flipsign(inv(γ), ξ), w, 1)
-
-    SNI.SI = SpmrNsIterate(α, β, γ, δ, ξ, u, v, w, z, û, ŵ)
-
-    return (SNI.SI, k+1)
-end
-
-Base.eltype(::Type{SimboNsIterator}) = SpmrNsIterate
-
-Base.length(SNI::SimboNsIterator) = block_sizes(SNI.K)[1] - block_sizes(SNI.K)[2]

@@ -68,6 +68,7 @@ function spqmr_sc(K::SpmrScMatrix, g::AbstractVector{<:Real};
 end
 
 # SPQMR-NS
+#=
 
 function spqmr_ns(K::SpmrNsMatrix, f::AbstractVector{<:Real};
                   tol::Float64=1e-6, maxit::Int=10)
@@ -118,3 +119,4 @@ function spqmr_ns(K::SpmrNsMatrix, f::AbstractVector{<:Real};
 
     return SpmrNsResult(-p, MAXIT_EXCEEDED, m, resvec)
 end
+=#
