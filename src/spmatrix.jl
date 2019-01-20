@@ -1,5 +1,7 @@
 # Saddle-point matrices
 
+using LinearAlgebra: checksquare
+
 export
     SpmrMatrix,
     SpmrScMatrix, SpmrNsMatrix
@@ -59,7 +61,7 @@ function SpmrScMatrix(A::T, G₁ᵀ::V, G₂::W) where {T<:InvLinearMap{Float64}
     return SpmrScMatrix(A, Aᵀ, convert(FloatOperator, G₁ᵀ), convert(FloatOperator, G₂))
 end
 
-function SpmrScMatrix(A::T, G₁ᵀ::V, G₂::W) where {T<:FloatMatrix,
+function SpmrScMatrix(A::T, G₁ᵀ::V, G₂::W) where {T<:AbstractMatrix{Float64},
                                                   V<:FloatOperator,
                                                   W<:FloatOperator}
     F = factorize(A)
@@ -68,15 +70,15 @@ function SpmrScMatrix(A::T, G₁ᵀ::V, G₂::W) where {T<:FloatMatrix,
     return SpmrScMatrix(F, Fᵀ, G₁ᵀ, G₂)
 end
 
-function SpmrScMatrix(A::T, G₁ᵀ::V, G₂::W) where {T<:RealMatrix,
+function SpmrScMatrix(A::T, G₁ᵀ::V, G₂::W) where {T<:AbstractMatrix{<:Real},
                                                   V<:RealOperator,
                                                   W<:RealOperator}
-    return SpmrScMatrix(convert(FloatMatrix, A),
+    return SpmrScMatrix(convert(AbstractMatrix{Float64}, A),
                         convert(FloatOperator, G₁ᵀ),
                         convert(FloatOperator, G₂))
 end
 
-function SpmrScMatrix(K::RealMatrix, n::Integer)
+function SpmrScMatrix(K::AbstractMatrix{<:Real}, n::Integer)
     return SpmrScMatrix(K[1:n, 1:n], K[1:n, n+1:end], K[n+1:end, 1:n])
 end
 

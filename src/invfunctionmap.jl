@@ -1,3 +1,5 @@
+using LinearMaps: FunctionMap, A_mul_B!
+
 export InvLinearMap
 
 struct InvLinearMap{T}
