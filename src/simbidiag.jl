@@ -80,19 +80,19 @@ const func_quotes = Dict(:simba_sc =>
 
                          :simba_ns =>
                          Dict(:init => quote
-                                  ℓ₁, ℓ₂ = nullities(K)
+                                  ℓ = nullsp_basis_size(K)
 
-                                  @normalize!(β, v, b, ℓ₂)
-                                  @normalize!(δ, z, c, ℓ₁)
+                                  @normalize!(β, v, b, ℓ)
+                                  @normalize!(δ, z, c, ℓ)
                               end,
                               :iterate => quote
-                                  @mul_into!(v, K.H₂', SI_prev.ŵ, ℓ₂)
+                                  @mul_into!(v, K.H₂', SI_prev.ŵ, ℓ)
                                   BLAS.axpy!(-SI_prev.α, SI_prev.v, v)
-                                  @mul_into!(z, K.H₁', SI_prev.û, ℓ₁)
+                                  @mul_into!(z, K.H₁', SI_prev.û, ℓ)
                                   BLAS.axpy!(-SI_prev.γ, SI_prev.z, z)
 
-                                  @normalize!(β, v, ℓ₂)
-                                  @normalize!(δ, z, ℓ₁)
+                                  @normalize!(β, v, ℓ)
+                                  @normalize!(δ, z, ℓ)
                               end
                              ),
 
@@ -106,17 +106,17 @@ const func_quotes = Dict(:simba_sc =>
                                   z = c / β
                               end,
                               :iterate => quote
-                                  @mul_into!(v, K.H₁', SI_prev.û, ℓ₁)
+                                  @mul_into!(v, K.H₁', SI_prev.û, ℓ)
                                   BLAS.axpy!(-SI_prev.γ, SI_prev.v, v)
-                                  @mul_into!(z, K.H₂', SI_prev.ŵ, ℓ₂)
+                                  @mul_into!(z, K.H₂', SI_prev.ŵ, ℓ)
                                   BLAS.axpy!(-SI_prev.α, SI_prev.z, z)
 
                                   χ = z ⋅ v
 
                                   δ = sqrt(abs(χ))
-                                  BLAS.scal!(ℓ₁, inv(δ), v, 1)
+                                  BLAS.scal!(ℓ, inv(δ), v, 1)
                                   β = flipsign(δ, χ)
-                                  BLAS.scal!(ℓ₂, inv(β), z, 1)
+                                  BLAS.scal!(ℓ, inv(β), z, 1)
                               end
                              )
                         )
@@ -226,7 +226,7 @@ for (func, (matrix_type, iterator_type, iterate_type)) in bidiag_types
 
             function Base.iterate(SNI::$iterator_type, k::Int=0)
                 n, m = block_sizes(SNI.K)
-                ℓ₁, ℓ₂ = nullities(SNI.K)
+                ℓ = nullsp_basis_size(SNI.K)
 
                 k == 0 && (SNI.SI = SNI.SI₀)
                 k ≥ n-m && return nothing

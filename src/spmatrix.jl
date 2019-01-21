@@ -135,6 +135,10 @@ struct SpmrNsMatrix{T<:FloatOperator,
             throw(DimensionMismatch("H₂ should have $n rows"))
         end
 
+        if size(H₁, 2) ≠ size(H₂, 2)
+            throw(DimensionMismatch("H₁ and H₂ should have the same number of columns"))
+        end
+
         if !checktranspose(A)
             error("Left-multiplication by Aᵀ should be implemented")
         elseif !checktranspose(H₁)
@@ -165,7 +169,7 @@ end
 SpmrNsMatrix(K::SpmrNsMatrix) = K
 
 block_sizes(K::SpmrNsMatrix) = (size(K.A, 1), K.m)
-nullities(K::SpmrNsMatrix) = (size(K.H₁, 2), size(K.H₂, 2))
+nullsp_basis_size(K::SpmrNsMatrix) = size(K.H₁, 2)
 
 # Helper functions
 

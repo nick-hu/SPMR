@@ -63,7 +63,9 @@ end
 function spmr_ns(K::SpmrNsMatrix, f::AbstractVector{<:Real};
                  tol::Float64=1e-6, maxit::Int=10)
     n, m = block_sizes(K)
-    SNI, SI₀ = simba_ns(K, K.H₂' * -f, K.H₁' * -f)
+
+    fₕ = K.H₁' * -f
+    SNI, SI₀ = simbo_ns(K, fₕ, fₕ)
 
     @init_qr(SI₀)
     @init_x!(p, SI₀, n)
@@ -132,10 +134,10 @@ end
 function spqmr_ns(K::SpmrNsMatrix, f::AbstractVector{<:Real};
                   tol::Float64=1e-6, maxit::Int=10)
     n, m = block_sizes(K)
-    ℓ₁, _ = nullities(K)
+    ℓ = nullsp_basis_size(K)
 
     fₕ = K.H₁' * -f
-    SNI, SI₀ = simbo_ns(K, fₕ, K.H₂' * -f)
+    SNI, SI₀ = simbo_ns(K, fₕ, fₕ)
 
     @init_qr(SI₀)
     @init_x!(p, SI₀, n)
