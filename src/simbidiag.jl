@@ -38,88 +38,66 @@ const bidiag_types = (:simba_sc => (:SpmrScMatrix, :SimbaScIterator, :SpmrScIter
                       :simbo_sc => (:SpmrScMatrix, :SimboScIterator, :SpmrScIterate),
                       :simbo_ns => (:SpmrNsMatrix, :SimboNsIterator, :SpmrNsIterate))
 
-const func_quotes = Dict(:simba_sc =>
-                         Dict(:init => quote
-                                  @normalize!(β, v, b, m)
-                                  @normalize!(δ, z, c, m)
-                              end,
-                              :iterate => quote
-                                  @mul_into!(v, K.G₁ᵀ', SI_prev.w, m)
-                                  BLAS.axpy!(-SI_prev.α, SI_prev.v, v)
-                                  @mul_into!(z, K.G₂, SI_prev.u, m)
-                                  BLAS.axpy!(-SI_prev.γ, SI_prev.z, z)
+const bidiag_quotes = Dict(:simba_sc =>
+                           Dict(:init => quote
+                                    @normalize!(β, v, b, m)
+                                    @normalize!(δ, z, c, m)
+                                end,
+                                :iterate => quote
+                                    @mul_into!(v, K.G₁ᵀ', SI_prev.w, m)
+                                    BLAS.axpy!(-SI_prev.α, SI_prev.v, v)
+                                    @mul_into!(z, K.G₂, SI_prev.u, m)
+                                    BLAS.axpy!(-SI_prev.γ, SI_prev.z, z)
 
-                                  @normalize!(β, v, m)
-                                  @normalize!(δ, z, m)
-                              end
-                             ),
+                                    @normalize!(β, v, m)
+                                    @normalize!(δ, z, m)
+                                end
+                               ),
 
-                         :simbo_sc =>
-                         Dict(:init => quote
-                                  χ = c ⋅ b
+                           :simbo_sc =>
+                           Dict(:init => quote
+                                    @biorthogonalize!(z, v, β, δ, c, b)
+                                end,
+                                :iterate => quote
+                                    @mul_into!(v, K.G₂, SI_prev.u, m)
+                                    BLAS.axpy!(-SI_prev.γ, SI_prev.v, v)
+                                    @mul_into!(z, K.G₁ᵀ', SI_prev.w, m)
+                                    BLAS.axpy!(-SI_prev.α, SI_prev.z, z)
 
-                                  δ = sqrt(abs(χ))
-                                  v = b / δ
-                                  β = flipsign(δ, χ)
-                                  z = c / β
-                              end,
-                              :iterate => quote
-                                  @mul_into!(v, K.G₂, SI_prev.u, m)
-                                  BLAS.axpy!(-SI_prev.γ, SI_prev.v, v)
-                                  @mul_into!(z, K.G₁ᵀ', SI_prev.w, m)
-                                  BLAS.axpy!(-SI_prev.α, SI_prev.z, z)
+                                    @biorthogonalize!(z, v, β, δ, m)
+                                end
+                               ),
 
-                                  χ = z ⋅ v
+                           :simba_ns =>
+                           Dict(:init => quote
+                                    @normalize!(β, v, b, ℓ)
+                                    @normalize!(δ, z, c, ℓ)
+                                end,
+                                :iterate => quote
+                                    @mul_into!(v, K.H₂', SI_prev.ŵ, ℓ)
+                                    BLAS.axpy!(-SI_prev.α, SI_prev.v, v)
+                                    @mul_into!(z, K.H₁', SI_prev.û, ℓ)
+                                    BLAS.axpy!(-SI_prev.γ, SI_prev.z, z)
 
-                                  δ = sqrt(abs(χ))
-                                  BLAS.scal!(m, inv(δ), v, 1)
-                                  β = flipsign(δ, χ)
-                                  BLAS.scal!(m, inv(β), z, 1)
-                              end
-                             ),
+                                    @normalize!(β, v, ℓ)
+                                    @normalize!(δ, z, ℓ)
+                                end
+                               ),
 
-                         :simba_ns =>
-                         Dict(:init => quote
-                                  ℓ = nullsp_basis_size(K)
+                           :simbo_ns =>
+                           Dict(:init => quote
+                                    @biorthogonalize!(z, v, β, δ, c, b)
+                                end,
+                                :iterate => quote
+                                    @mul_into!(v, K.H₁', SI_prev.û, ℓ)
+                                    BLAS.axpy!(-SI_prev.γ, SI_prev.v, v)
+                                    @mul_into!(z, K.H₂', SI_prev.ŵ, ℓ)
+                                    BLAS.axpy!(-SI_prev.α, SI_prev.z, z)
 
-                                  @normalize!(β, v, b, ℓ)
-                                  @normalize!(δ, z, c, ℓ)
-                              end,
-                              :iterate => quote
-                                  @mul_into!(v, K.H₂', SI_prev.ŵ, ℓ)
-                                  BLAS.axpy!(-SI_prev.α, SI_prev.v, v)
-                                  @mul_into!(z, K.H₁', SI_prev.û, ℓ)
-                                  BLAS.axpy!(-SI_prev.γ, SI_prev.z, z)
-
-                                  @normalize!(β, v, ℓ)
-                                  @normalize!(δ, z, ℓ)
-                              end
-                             ),
-
-                         :simbo_ns =>
-                         Dict(:init => quote
-                                  χ = c ⋅ b
-
-                                  δ = sqrt(abs(χ))
-                                  v = b / δ
-                                  β = flipsign(δ, χ)
-                                  z = c / β
-                              end,
-                              :iterate => quote
-                                  @mul_into!(v, K.H₁', SI_prev.û, ℓ)
-                                  BLAS.axpy!(-SI_prev.γ, SI_prev.v, v)
-                                  @mul_into!(z, K.H₂', SI_prev.ŵ, ℓ)
-                                  BLAS.axpy!(-SI_prev.α, SI_prev.z, z)
-
-                                  χ = z ⋅ v
-
-                                  δ = sqrt(abs(χ))
-                                  BLAS.scal!(ℓ, inv(δ), v, 1)
-                                  β = flipsign(δ, χ)
-                                  BLAS.scal!(ℓ, inv(β), z, 1)
-                              end
-                             )
-                        )
+                                    @biorthogonalize!(z, v, β, δ, ℓ)
+                                end
+                               )
+                          )
 
 for (func, (matrix_type, iterator_type, iterate_type)) in bidiag_types
     @eval begin
@@ -141,18 +119,12 @@ for (func, (matrix_type, iterator_type, iterate_type)) in bidiag_types
         Base.eltype(::Type{$iterator_type}) = $iterate_type
     end
 
-    if matrix_type == :SpmrScMatrix
-        @eval Base.length(SSI::$iterator_type) = block_sizes(SSI.K)[2]
-    elseif matrix_type == :SpmrNsMatrix
-        @eval Base.length(SNI::$iterator_type) = foldl(-, block_sizes(SNI.K))
-    end
-
     if func == :simba_sc || func == :simbo_sc
         @eval begin
             function $func(K::$matrix_type, b::Vector{Float64}, c::Vector{Float64})
                 n, m = block_sizes(K)
 
-                $(func_quotes[func][:init])
+                $(bidiag_quotes[func][:init])
 
                 @mul_into!(û, K.G₁ᵀ, v, n)
                 @mul_into!(ŵ, K.G₂', z, n)
@@ -160,11 +132,7 @@ for (func, (matrix_type, iterator_type, iterate_type)) in bidiag_types
                 @ldiv_into!(u, K.A, û, n)
                 @ldiv_into!(w, K.Aᵀ, ŵ, n)
 
-                ξ = û ⋅ w
-                α = γ = sqrt(abs(ξ))
-
-                @scal_signinv!(u, α, ξ, n)
-                @scal_signinv!(w, γ, ξ, n)
+                @conjugate!(u, w, α, γ, ξ, û, n)
 
                 SI = $iterate_type(α, β, γ, δ, ξ, u, v, w, z)
 
@@ -179,7 +147,7 @@ for (func, (matrix_type, iterator_type, iterate_type)) in bidiag_types
 
                 K, SI_prev = SSI.K, SSI.SI
 
-                $(func_quotes[func][:iterate])
+                $(bidiag_quotes[func][:iterate])
 
                 @mul_into!(û, K.G₁ᵀ, v, n)
                 @mul_into!(ŵ, K.G₂', z, n)
@@ -189,23 +157,22 @@ for (func, (matrix_type, iterator_type, iterate_type)) in bidiag_types
                 @ldiv_into!(w, K.Aᵀ, ŵ, n)
                 BLAS.axpy!(-flipsign(δ, SI_prev.ξ), SI_prev.w, w)
 
-                ξ = û ⋅ w
-                α = γ = sqrt(abs(ξ))
-
-                @scal_signinv!(u, α, ξ, n)
-                @scal_signinv!(w, γ, ξ, n)
+                @conjugate!(u, w, α, γ, ξ, û, n)
 
                 SSI.SI = $iterate_type(α, β, γ, δ, ξ, u, v, w, z)
 
                 return (SSI.SI, k+1)
             end
+
+            Base.length(SSI::$iterator_type) = block_sizes(SSI.K)[2]
         end
     elseif func == :simba_ns || func == :simbo_ns
         @eval begin
             function $func(K::$matrix_type, b::Vector{Float64}, c::Vector{Float64})
                 n, _ = block_sizes(K)
+                ℓ = nullsp_basis_size(K)
 
-                $(func_quotes[func][:init])
+                $(bidiag_quotes[func][:init])
 
                 @mul_into!(u, K.H₂, v, n)
                 @mul_into!(w, K.H₁, z, n)
@@ -213,11 +180,7 @@ for (func, (matrix_type, iterator_type, iterate_type)) in bidiag_types
                 @mul_into!(û, K.A, u, n)
                 @mul_into!(ŵ, K.A', w, n)
 
-                ξ = û ⋅ w
-                α = γ = sqrt(abs(ξ))
-
-                @scal_signinv!(u, α, ξ, n)
-                @scal_signinv!(w, γ, ξ, n)
+                @conjugate!(u, w, α, γ, ξ, û, n)
 
                 SI = $iterate_type(α, β, γ, δ, ξ, u, v, w, z, û, ŵ)
 
@@ -236,7 +199,7 @@ for (func, (matrix_type, iterator_type, iterate_type)) in bidiag_types
                 @scal_signinv!(SI_prev.û, SI_prev.α, SI_prev.ξ, n)
                 @scal_signinv!(SI_prev.ŵ, SI_prev.γ, SI_prev.ξ, n)
 
-                $(func_quotes[func][:iterate])
+                $(bidiag_quotes[func][:iterate])
 
                 @mul_into!(u, K.H₂, v, n)
                 BLAS.axpy!(-flipsign(β, SI_prev.ξ), SI_prev.u, u)
@@ -246,16 +209,14 @@ for (func, (matrix_type, iterator_type, iterate_type)) in bidiag_types
                 @mul_into!(û, K.A, u, n)
                 @mul_into!(ŵ, K.A', w, n)
 
-                ξ = û ⋅ w
-                α = γ = sqrt(abs(ξ))
-
-                @scal_signinv!(u, α, ξ, n)
-                @scal_signinv!(w, γ, ξ, n)
+                @conjugate!(u, w, α, γ, ξ, û, n)
 
                 SNI.SI = $iterate_type(α, β, γ, δ, ξ, u, v, w, z, û, ŵ)
 
                 return (SNI.SI, k+1)
             end
+
+            Base.length(SNI::$iterator_type) = foldl(-, block_sizes(SNI.K))
         end
     end
 end

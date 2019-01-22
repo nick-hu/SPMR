@@ -28,155 +28,158 @@ struct SpmrNsResult
     resvec::Vector{Float64}
 end
 
-# SPMR-SC
+const function_pairs = (:spmr_sc => :simba_sc, :spmr_ns => :simba_ns,
+                        :spqmr_sc => :simbo_sc, :spqmr_ns => :simbo_ns)
 
-function spmr_sc(K::SpmrScMatrix, g::AbstractVector{<:Real};
-                 tol::Float64=1e-6, maxit::Int=10)
-    n, m = block_sizes(K)
-    SSI, SI₀ = simba_sc(K, g, g)
+const iteration_quotes = Dict(:spmr_sc =>
+                              Dict(:init => :(),
+                                   :compute_res => quote
+                                       resvec[k] = k == 1 ? Ω.s : resvec[k-1] * Ω.s
+                                       if resvec[k] < tol
+                                           return SpmrScResult(x, y, CONVERGED,
+                                                               k, resvec[1:k])
+                                       end
+                                   end
+                                  ),
 
-    @init_qr(SI₀)
-    @init_x!(x, SI₀, n)
-    @init_y!(y, SI₀, m)
+                              :spmr_ns =>
+                              Dict(:init => :(),
+                                   :compute_res => quote
+                                       resvec[k] = k == 1 ? Ω.s : resvec[k-1] * Ω.s
+                                       if resvec[k] < tol
+                                           return SpmrNsResult(-p, CONVERGED,
+                                                               k, resvec[1:k])
+                                       end
+                                   end
+                                  ),
 
-    abs(SI₀.ξ) < eps() && return SpmrScResult(x, y, OTHER, 0, Float64[])
+                              :spqmr_sc =>
+                              Dict(:init => quote
+                                       relres = one(Float64)
+                                       norm_g = BLAS.nrm2(m, g, 1)
+                                   end,
+                                   :compute_res => quote
+                                       relres *= Ω.s
+                                       resvec[k] = sqrt(k) * relres
 
-    resvec = Vector{Float64}(undef, min(m, maxit))
+                                       if resvec[k] < tol
+                                           @mul_into!(r, K.G₂, x, m)
+                                           r .-= g
 
-    for (k, SI) in enumerate(SSI)
-        k > maxit && return SpmrScResult(x, y, MAXIT_EXCEEDED, maxit, resvec[1:maxit])
-        abs(SI.ξ) < eps() && return SpmrScResult(x, y, OTHER, k-1, resvec[1:k-1])
+                                           norm_r = BLAS.nrm2(m, r, 1)
+                                           if norm_r < tol * norm_g
+                                               return SpmrScResult(x, y, CONVERGED,
+                                                                   k, resvec[1:k])
+                                           end
+                                       end
+                                   end
+                                  ),
 
-        @update_qr!(Ω, SI)
-        @update_x!(x, SI, n)
-        @update_y!(y, SI, m)
+                              :spqmr_ns =>
+                              Dict(:init => quote
+                                       ℓ = nullsp_basis_size(K)
 
-        resvec[k] = k == 1 ? Ω.s : resvec[k-1] * Ω.s    # Rel. res. norm
-        resvec[k] < tol && return SpmrScResult(x, y, CONVERGED, k, resvec[1:k])
-    end
+                                       relres = one(Float64)
+                                       norm_f = BLAS.nrm2(n, f, 1)
+                                   end,
+                                   :compute_res => quote
+                                       relres *= Ω.s
+                                       resvec[k] = sqrt(k) * relres
 
-    return SpmrScResult(x, y, MAXIT_EXCEEDED, m, resvec)
-end
+                                       if resvec[k] < tol
+                                           @mul_into!(p̂, K.A, p, n)
+                                           @mul_into!(r, K.H₁', p̂, ℓ)
+                                           r .-= fₕ
 
-# SPMR-NS
+                                           norm_r = BLAS.nrm2(ℓ, r, 1)
+                                           if norm_r < tol * norm_f
+                                               return SpmrNsResult(-p, CONVERGED,
+                                                                   k, resvec[1:k])
+                                           end
+                                       end
+                                   end
+                                  )
+                             )
 
-function spmr_ns(K::SpmrNsMatrix, f::AbstractVector{<:Real};
-                 tol::Float64=1e-6, maxit::Int=10)
-    n, m = block_sizes(K)
+for (func, bidiag_func) in function_pairs
+    if func == :spmr_sc || func == :spqmr_sc
+        @eval begin
+            function $func(K::SpmrScMatrix, g::AbstractVector{<:Real};
+                           tol::Float64=1e-6, maxit::Int=10)
+                n, m = block_sizes(K)
 
-    fₕ = K.H₁' * -f
-    SNI, SI₀ = simbo_ns(K, fₕ, fₕ)
+                SSI, SI₀ = $bidiag_func(K, g, g)
 
-    @init_qr(SI₀)
-    @init_x!(p, SI₀, n)
+                @init_qr(SI₀)
+                @init_x!(x, SI₀, n)
+                @init_y!(y, SI₀, m)
 
-    abs(SI₀.ξ) < eps() && return SpmrNsResult(-p, OTHER, 0, Float64[])
+                if abs(SI₀.ξ) < eps()
+                    return SpmrScResult(x, y, OTHER, 0, Float64[])
+                end
 
-    resvec = Vector{Float64}(undef, min(n-m, maxit))
+                resvec = Vector{Float64}(undef, min(m, maxit))
 
-    for (k, SI) in enumerate(SNI)
-        k > maxit && return SpmrNsResult(-p, MAXIT_EXCEEDED, maxit, resvec[1:maxit])
-        abs(SI.ξ) < eps() && return SpmrNsResult(-p, OTHER, k-1, resvec[1:k-1])
+                $(iteration_quotes[func][:init])
 
-        @update_qr!(Ω, SI)
-        @update_x!(p, SI, n)
+                for (k, SI) in enumerate(SSI)
+                    if k > maxit
+                        return SpmrScResult(x, y, MAXIT_EXCEEDED, maxit, resvec[1:maxit])
+                    elseif abs(SI.ξ) < eps()
+                        return SpmrScResult(x, y, OTHER, k-1, resvec[1:k-1])
+                    end
 
-        resvec[k] = k == 1 ? Ω.s : resvec[k-1] * Ω.s     # Rel. res. norm
-        resvec[k] < tol && return SpmrNsResult(-p, CONVERGED, k, resvec[1:k])
-    end
+                    @update_qr!(Ω, SI)
+                    @update_x!(x, SI, n)
+                    @update_y!(y, SI, m)
 
-    return SpmrNsResult(-p, MAXIT_EXCEEDED, m, resvec)
-end
+                    $(iteration_quotes[func][:compute_res])
+                end
 
-# SPQMR-SC
+                return SpmrScResult(x, y, MAXIT_EXCEEDED, m, resvec)
+            end
+        end
+    elseif func == :spmr_ns || func == :spqmr_ns
+        @eval begin
+            function $func(K::SpmrNsMatrix, f::AbstractVector{<:Real};
+                           tol::Float64=1e-6, maxit::Int=10)
+                n, m = block_sizes(K)
 
-function spqmr_sc(K::SpmrScMatrix, g::AbstractVector{<:Real};
-                  tol::Float64=1e-6, maxit::Int=10)
-    n, m = block_sizes(K)
-    SSI, SI₀ = simbo_sc(K, g, g)
+                fₕ = K.H₁' * -f
+                SNI, SI₀ = $bidiag_func(K, fₕ, fₕ)
 
-    @init_qr(SI₀)
-    @init_x!(x, SI₀, n)
-    @init_y!(y, SI₀, m)
+                @init_qr(SI₀)
+                @init_x!(p, SI₀, n)
 
-    abs(SI₀.ξ) < eps() && return SpmrScResult(x, y, OTHER, 0, Float64[])
+                if abs(SI₀.ξ) < eps()
+                    return SpmrNsResult(-p, OTHER, 0, Float64[])
+                end
 
-    resvec = Vector{Float64}(undef, min(m, maxit))
-    relres = one(Float64)
-    norm_g = BLAS.nrm2(m, g, 1)
+                resvec = Vector{Float64}(undef, min(n-m, maxit))
 
-    for (k, SI) in enumerate(SSI)
-        k > maxit && return SpmrScResult(x, y, MAXIT_EXCEEDED, maxit, resvec[1:maxit])
-        abs(SI.ξ) < eps() && return SpmrScResult(x, y, OTHER, k-1, resvec[1:k-1])
+                $(iteration_quotes[func][:init])
 
-        @update_qr!(Ω, SI)
-        @update_x!(x, SI, n)
-        @update_y!(y, SI, m)
+                for (k, SI) in enumerate(SNI)
+                    if k > maxit
+                        return SpmrNsResult(-p, MAXIT_EXCEEDED, maxit, resvec[1:maxit])
+                    elseif abs(SI.ξ) < eps()
+                        return SpmrNsResult(-p, OTHER, k-1, resvec[1:k-1])
+                    end
 
-        relres *= Ω.s
-        resvec[k] = sqrt(k) * relres    # Bound on rel. res. norm
+                    @update_qr!(Ω, SI)
+                    @update_x!(p, SI, n)
 
-        if resvec[k] < tol
-            r = Vector{Float64}(undef, m)
-            mul!(r, K.G₂, x)
-            r .-= g
+                    $(iteration_quotes[func][:compute_res])
+                end
 
-            norm_r = BLAS.nrm2(m, r, 1)     # Actual residual norm
-            norm_r < tol * norm_g && return SpmrScResult(x, y, CONVERGED, k, resvec[1:k])
+                return SpmrNsResult(-p, MAXIT_EXCEEDED, n-m, resvec)
+            end
         end
     end
-
-    return SpmrScResult(x, y, MAXIT_EXCEEDED, m, resvec)
-end
-
-# SPQMR-NS
-
-function spqmr_ns(K::SpmrNsMatrix, f::AbstractVector{<:Real};
-                  tol::Float64=1e-6, maxit::Int=10)
-    n, m = block_sizes(K)
-    ℓ = nullsp_basis_size(K)
-
-    fₕ = K.H₁' * -f
-    SNI, SI₀ = simbo_ns(K, fₕ, fₕ)
-
-    @init_qr(SI₀)
-    @init_x!(p, SI₀, n)
-
-    abs(SI₀.ξ) < eps() && return SpmrNsResult(-p, OTHER, 0, Float64[])
-
-    resvec = Vector{Float64}(undef, min(n-m, maxit))
-    relres = one(Float64)
-    norm_f = BLAS.nrm2(n, f, 1)
-
-    for (k, SI) in enumerate(SNI)
-        k > maxit && return SpmrNsResult(-p, MAXIT_EXCEEDED, maxit, resvec[1:maxit])
-        abs(SI.ξ) < eps() && return SpmrNsResult(-p, OTHER, k-1, resvec[1:k-1])
-
-        @update_qr!(Ω, SI)
-        @update_x!(p, SI, n)
-
-        relres *= Ω.s
-        resvec[k] = sqrt(k) * relres    # Bound on rel. res. norm
-
-        if resvec[k] < tol
-            pₐ = Vector{Float64}(undef, n)
-            r = Vector{Float64}(undef, ℓ₁)
-            mul!(pₐ, K.A, p)
-            mul!(r, K.H₁', pₐ)
-            r .-= fₕ
-
-            norm_r = BLAS.nrm2(ℓ₁, r, 1)     # Actual residual norm
-            norm_r < tol * norm_f && return SpmrNsResult(-p, CONVERGED, k, resvec[1:k])
-        end
-    end
-
-    return SpmrNsResult(-p, MAXIT_EXCEEDED, m, resvec)
 end
 
 function recover_y(result::SpmrNsResult, K::SpmrNsMatrix, G₁ᵀ::AbstractMatrix{<:Real},
                    f::Vector{<:Real})
-    Ax = Vector{Float64}(undef, block_sizes(K)[1])
-    mul!(Ax, K.A, result.x)
-
-    return G₁ᵀ \ (f - Ax)
+    @mul_into!(x̂, K.A, result.x, block_sizes(K)[1])
+    return G₁ᵀ \ (f - x̂)
 end

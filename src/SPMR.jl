@@ -21,12 +21,6 @@ function Base.convert(::Type{FloatOperator}, A::RealOperator)
 end
 
 include("spmatrix.jl")
-
-const type_map = (:simba_sc => (:SpmrScMatrix, :SimbaScIterator, :SpmrScIterate),
-                  :simba_ns => (:SpmrNsMatrix, :SimbaNsIterator, :SpmrNsIterate),
-                  :simbo_sc => (:SpmrScMatrix, :SimboScIterator, :SpmrScIterate),
-                  :simbo_ns => (:SpmrNsMatrix, :SimboNsIterator, :SpmrNsIterate))
-
 include("simbidiag.jl")
 include("spmr.jl")
 
