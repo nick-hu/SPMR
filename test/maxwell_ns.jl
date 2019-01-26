@@ -22,13 +22,13 @@ K = SpmrNsMatrix(A_map, H₁_map, H₁_map, m)
 =#
 
 K = SpmrNsMatrix(A,
-                 LinearMap(null_proj(G₁), n, n, issymmetric=true),
-                 LinearMap(null_proj(G₁), n, n, issymmetric=true),
+                 LinearMap(null_proj_cp(G₁), n, n, issymmetric=true),
+                 LinearMap(null_proj_cp(G₁), n, n, issymmetric=true),
                  m)
 
 f = Vector(range(-1, 1, length=n))
 
-@time result = spmr_ns(K, f, tol=1e-10, maxit=20)
+@time result = spqmr_ns(K, f, tol=1e-10, maxit=2m)
 
 #=
 Profile.clear()

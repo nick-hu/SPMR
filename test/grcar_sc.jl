@@ -6,9 +6,9 @@ using SPMR, LinearMaps
 
 include("grcar.jl")
 
-#n, m = 2000, 1000
+n, m = 2000, 1000
 #n, m = 200, 100
-n, m = 1000, 500
+#n, m = 1000, 500
 
 A = grcar(n)
 
@@ -28,7 +28,7 @@ K = SpmrScMatrix(A⁻¹_map, G₁ᵀ_map, G₂_map)
 g = ones(m)
 #g = rand(m)
 
-@time result = spmr_sc(K, g, tol=1e-10, maxit=10)
+@time result = spmr_sc(K, g, tol=1e-10, maxit=2m)
 
 #=
 Profile.clear()

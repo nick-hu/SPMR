@@ -52,7 +52,7 @@ macro biorthogonalize!(z, v, β, δ, c, b)
         $v = $b / $δ
         $β = flipsign($δ, χ)
         $z = $c / $β
-    end
+    end |> esc
 end
 
 macro biorthogonalize!(z, v, β, δ, n)

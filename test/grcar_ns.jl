@@ -8,13 +8,13 @@ include("null_proj.jl")
 include("grcar.jl")
 
 #n, m = 2000, 1000
-n, m = 200, 100
+n, m = 1000, 500
 
 A = grcar(n)
 
 F = sparse(100I, m, m)
 #F = sprand(m, n÷2, 0.1) + 100I
-G₁ = [F F]
+G₁ = [F zeros(m, m)]
 
 #=
 @time H₁ = nullspace(Matrix(G₁))
@@ -33,8 +33,7 @@ K = SpmrNsMatrix(A,
                  LinearMap(null_proj(G₁), n, n, issymmetric=true),
                  m)
 
-#f = Vector(0.0005:0.0005:1.0)
-f = Vector(0.005:0.005:1.0)
+f = Vector(range(-1, 1, length=n))
 #f = rand(n)
 
 @time result = spqmr_ns(K, f, tol=1e-10, maxit=2m)
