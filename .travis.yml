@@ -3,10 +3,10 @@ language: julia
 julia:
   - 1.0
 
-codecov: true
+#codecov: true
 
-after_success:
-    - julia --inline=no -e 'cd(Pkg.dir("SPMR")); Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'
+#after_success:
+    #- julia --inline=no -e 'cd(Pkg.dir("SPMR")); Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'
 
 notifications:
     email: false

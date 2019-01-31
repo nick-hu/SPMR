@@ -6,9 +6,9 @@ using SPMR, LinearMaps
 
 include("grcar.jl")
 
-#n, m = 2000, 1000
+n, m = 2000, 1000  # Benchmark sizes
 #n, m = 200, 100
-n, m = 1000, 500
+#n, m = 1000, 500
 
 A = grcar(n)
 

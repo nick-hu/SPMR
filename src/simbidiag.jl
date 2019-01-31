@@ -40,13 +40,8 @@ const bidiag_types = (:simba_sc => (:SpmrScMatrix, :SimbaScIterator, :SpmrScIter
 
 const bidiag_quotes = Dict(:simba_sc =>
                            Dict(:init => quote
-                                    #@normalize!(β, v, b, m)
-                                    #@normalize!(δ, z, c, m)
-                                    @ldiv_into!(v̂, precond, b, m)
-                                    @ldiv_into!(ẑ, precond, c, m)
-
-                                    @normalize_precond!(β, v, v̂, b, m)
-                                    @normalize_precond!(δ, z, ẑ, c, m)
+                                    @normalize!(β, v, v̂, b, m)
+                                    @normalize!(δ, z, ẑ, c, m)
                                 end,
                                 :iterate => quote
                                     @mul_into!(v, K.G₁ᵀ', SI_prev.w, m)
@@ -54,23 +49,17 @@ const bidiag_quotes = Dict(:simba_sc =>
                                     @mul_into!(z, K.G₂, SI_prev.u, m)
                                     BLAS.axpy!(-SI_prev.γ, SI_prev.z, z)
 
-                                    #@normalize!(β, v, m)
-                                    #@normalize!(δ, z, m)
                                     @ldiv_into!(v̂, M, v, m)
                                     @ldiv_into!(ẑ, M, z, m)
 
-                                    @normalize_precond!(β, v, v̂, m)
-                                    @normalize_precond!(δ, z, ẑ, m)
+                                    @normalize!(β, v, v̂, m)
+                                    @normalize!(δ, z, ẑ, m)
                                 end
                                ),
 
                            :simbo_sc =>
                            Dict(:init => quote
-                                    @ldiv_into!(v̂, precond, b, m)
-                                    @ldiv_into!(ẑ, precond, c, m)
-
-                                    #@biorthogonalize!(z, v, β, δ, c, b)
-                                    @biorthogonalize_precond!(z, ẑ, v, v̂, β, δ, c, b, m)
+                                    @biorthogonalize!(z, ẑ, v, v̂, β, δ, c, b, m)
                                 end,
                                 :iterate => quote
                                     @mul_into!(v, K.G₂, SI_prev.u, m)
@@ -81,21 +70,14 @@ const bidiag_quotes = Dict(:simba_sc =>
                                     @ldiv_into!(v̂, M, v, m)
                                     @ldiv_into!(ẑ, M, z, m)
 
-                                    #@biorthogonalize!(z, v, β, δ, m)
-                                    @biorthogonalize_precond!(z, ẑ, v, v̂, β, δ, m)
+                                    @biorthogonalize!(z, ẑ, v, v̂, β, δ, m)
                                 end
                                ),
 
                            :simba_ns =>
                            Dict(:init => quote
-                                    #@normalize!(β, v, b, ℓ)
-                                    #@normalize!(δ, z, c, ℓ)
-
-                                    @ldiv_into!(v̂, precond, b, ℓ)
-                                    @ldiv_into!(ẑ, precond, c, ℓ)
-
-                                    @normalize_precond!(β, v, v̂, b, ℓ)
-                                    @normalize_precond!(δ, z, ẑ, c, ℓ)
+                                    @normalize!(β, v, v̂, b, ℓ)
+                                    @normalize!(δ, z, ẑ, c, ℓ)
                                 end,
                                 :iterate => quote
                                     @mul_into!(v, K.H₂', SI_prev.ŵ, ℓ)
@@ -103,23 +85,17 @@ const bidiag_quotes = Dict(:simba_sc =>
                                     @mul_into!(z, K.H₁', SI_prev.û, ℓ)
                                     BLAS.axpy!(-SI_prev.γ, SI_prev.z, z)
 
-                                    #@normalize!(β, v, ℓ)
-                                    #@normalize!(δ, z, ℓ)
                                     @ldiv_into!(v̂, M, v, ℓ)
                                     @ldiv_into!(ẑ, M, z, ℓ)
 
-                                    @normalize_precond!(β, v, v̂, ℓ)
-                                    @normalize_precond!(δ, z, ẑ, ℓ)
+                                    @normalize!(β, v, v̂, ℓ)
+                                    @normalize!(δ, z, ẑ, ℓ)
                                 end
                                ),
 
                            :simbo_ns =>
                            Dict(:init => quote
-                                    @ldiv_into!(v̂, precond, b, ℓ)
-                                    @ldiv_into!(ẑ, precond, c, ℓ)
-
-                                    #@biorthogonalize!(z, v, β, δ, c, b)
-                                    @biorthogonalize_precond!(z, ẑ, v, v̂, β, δ, c, b, ℓ)
+                                    @biorthogonalize!(z, ẑ, v, v̂, β, δ, c, b, ℓ)
                                 end,
                                 :iterate => quote
                                     @mul_into!(v, K.H₁', SI_prev.û, ℓ)
@@ -130,8 +106,7 @@ const bidiag_quotes = Dict(:simba_sc =>
                                     @ldiv_into!(v̂, M, v, ℓ)
                                     @ldiv_into!(ẑ, M, z, ℓ)
 
-                                    #@biorthogonalize!(z, v, β, δ, ℓ)
-                                    @biorthogonalize_precond!(z, ẑ, v, v̂, β, δ, ℓ)
+                                    @biorthogonalize!(z, ẑ, v, v̂, β, δ, ℓ)
                                 end
                                )
                           )
@@ -166,10 +141,11 @@ for (func, (matrix_type, iterator_type, iterate_type)) in bidiag_types
                            precond::FloatInvOperator=I)
                 n, m = block_sizes(K)
 
+                @ldiv_into!(v̂, precond, b, m)
+                @ldiv_into!(ẑ, precond, c, m)
+
                 $(bidiag_quotes[func][:init])
 
-                #@mul_into!(û, K.G₁ᵀ, v, n)
-                #@mul_into!(ŵ, K.G₂', z, n)
                 @mul_into!(û, K.G₁ᵀ, v̂, n)
                 @mul_into!(ŵ, K.G₂', ẑ, n)
 
@@ -193,8 +169,6 @@ for (func, (matrix_type, iterator_type, iterate_type)) in bidiag_types
 
                 $(bidiag_quotes[func][:iterate])
 
-                #@mul_into!(û, K.G₁ᵀ, v, n)
-                #@mul_into!(ŵ, K.G₂', z, n)
                 @mul_into!(û, K.G₁ᵀ, v̂, n)
                 @mul_into!(ŵ, K.G₂', ẑ, n)
 
@@ -219,10 +193,11 @@ for (func, (matrix_type, iterator_type, iterate_type)) in bidiag_types
                 n, _ = block_sizes(K)
                 ℓ = nullsp_basis_size(K)
 
+                @ldiv_into!(v̂, precond, b, ℓ)
+                @ldiv_into!(ẑ, precond, c, ℓ)
+
                 $(bidiag_quotes[func][:init])
 
-                #@mul_into!(u, K.H₂, v, n)
-                #@mul_into!(w, K.H₁, z, n)
                 @mul_into!(u, K.H₂, v̂, n)
                 @mul_into!(w, K.H₁, ẑ, n)
 
@@ -250,10 +225,8 @@ for (func, (matrix_type, iterator_type, iterate_type)) in bidiag_types
 
                 $(bidiag_quotes[func][:iterate])
 
-                #@mul_into!(u, K.H₂, v, n)
                 @mul_into!(u, K.H₂, v̂, n)
                 BLAS.axpy!(-flipsign(β, SI_prev.ξ), SI_prev.u, u)
-                #@mul_into!(w, K.H₁, z, n)
                 @mul_into!(w, K.H₁, ẑ, n)
                 BLAS.axpy!(-flipsign(δ, SI_prev.ξ), SI_prev.w, w)
 
