@@ -1,16 +1,36 @@
 # Macros for SIMBA/SIMBO iterations
 
+#=
 macro normalize!(β, v, b, m)
     return quote
         $β = BLAS.nrm2($m, $b, 1)
         $v = $b / $β
     end |> esc
 end
+=#
 
+macro normalize_precond!(β, v, v̂, b, m)
+    return quote
+        $β = sqrt($v̂ ⋅ $b)
+        $v = $b / $β
+        BLAS.scal!($m, inv($β), $v̂, 1)
+    end |> esc
+end
+
+#=
 macro normalize!(β, v, m)
     return quote
         $β = BLAS.nrm2($m, $v, 1)
         normalize!($v)
+    end |> esc
+end
+=#
+
+macro normalize_precond!(β, v, v̂, m)
+    return quote
+        $β = sqrt($v̂ ⋅ $v)
+        BLAS.scal!($m, inv($β), $v, 1)
+        BLAS.scal!($m, inv($β), $v̂, 1)
     end |> esc
 end
 
@@ -44,6 +64,7 @@ macro conjugate!(u, w, α, γ, ξ, û, n)
     end |> esc
 end
 
+#=
 macro biorthogonalize!(z, v, β, δ, c, b)
     return quote
         χ = $c ⋅ $b
@@ -54,7 +75,22 @@ macro biorthogonalize!(z, v, β, δ, c, b)
         $z = $c / $β
     end |> esc
 end
+=#
 
+macro biorthogonalize_precond!(z, ẑ, v, v̂, β, δ, c, b, n)
+    return quote
+        χ = $c ⋅ $v̂
+
+        $δ = sqrt(abs(χ))
+        $v = $b / $δ
+        BLAS.scal!($n, inv($δ), $v̂, 1)
+        $β = flipsign($δ, χ)
+        $z = $c / $β
+        BLAS.scal!($n, inv($β), $ẑ, 1)
+    end |> esc
+end
+
+#=
 macro biorthogonalize!(z, v, β, δ, n)
     return quote
         χ = $z ⋅ $v
@@ -63,5 +99,19 @@ macro biorthogonalize!(z, v, β, δ, n)
         BLAS.scal!($n, inv($δ), $v, 1)
         $β = flipsign($δ, χ)
         BLAS.scal!($n, inv($β), $z, 1)
+    end |> esc
+end
+=#
+
+macro biorthogonalize_precond!(z, ẑ, v, v̂, β, δ, n)
+    return quote
+        χ = $z ⋅ $v̂
+
+        $δ = sqrt(abs(χ))
+        BLAS.scal!($n, inv($δ), $v, 1)
+        BLAS.scal!($n, inv($δ), $v̂, 1)
+        $β = flipsign($δ, χ)
+        BLAS.scal!($n, inv($β), $z, 1)
+        BLAS.scal!($n, inv($β), $ẑ, 1)
     end |> esc
 end

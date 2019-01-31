@@ -21,6 +21,12 @@ struct SpmrScResult
     resvec::Vector{Float64}
 end
 
+function SpmrScResult(x::Vector{Float64}, y::Vector{Float64}, flag::SpmrFlag, iter::Int,
+                      resvec::Vector{Float64}, precond::RealInvOperator)
+    @ldiv_into!(ŷ, precond, y, length(y))
+    return SpmrScResult(x, ŷ, flag, iter, resvec)
+end
+
 struct SpmrNsResult
     x::Vector{Float64}
     flag::SpmrFlag
@@ -37,7 +43,7 @@ const iteration_quotes = Dict(:spmr_sc =>
                                        resvec[k] = k == 1 ? Ω.s : resvec[k-1] * Ω.s
                                        if resvec[k] < tol
                                            return SpmrScResult(x, y, CONVERGED,
-                                                               k, resvec[1:k])
+                                                               k, resvec[1:k], precond)
                                        end
                                    end
                                   ),
@@ -69,7 +75,7 @@ const iteration_quotes = Dict(:spmr_sc =>
                                            norm_r = BLAS.nrm2(m, r, 1)
                                            if norm_r < tol * norm_g
                                                return SpmrScResult(x, y, CONVERGED,
-                                                                   k, resvec[1:k])
+                                                                   k, resvec[1:k], precond)
                                            end
                                        end
                                    end
@@ -105,17 +111,17 @@ for (func, bidiag_func) in function_pairs
     if func == :spmr_sc || func == :spqmr_sc
         @eval begin
             function $func(K::SpmrScMatrix, g::AbstractVector{<:Real};
-                           tol::Float64=1e-6, maxit::Int=10)
+                           tol::Float64=1e-6, maxit::Int=10, precond::RealInvOperator=I)
                 n, m = block_sizes(K)
 
-                SSI, SI₀ = $bidiag_func(K, g, g)
+                SSI, SI₀ = $bidiag_func(K, g, g, precond=precond)
 
                 @init_qr(SI₀)
                 @init_x!(x, SI₀, n)
                 @init_y!(y, SI₀, m)
 
                 if abs(SI₀.ξ) < eps()
-                    return SpmrScResult(x, y, OTHER, 0, Float64[])
+                    return SpmrScResult(x, y, OTHER, 0, Float64[], precond)
                 end
 
                 resvec = Vector{Float64}(undef, min(m, maxit))
@@ -124,9 +130,10 @@ for (func, bidiag_func) in function_pairs
 
                 for (k, SI) in enumerate(SSI)
                     if k > maxit
-                        return SpmrScResult(x, y, MAXIT_EXCEEDED, maxit, resvec[1:maxit])
+                        return SpmrScResult(x, y, MAXIT_EXCEEDED, maxit, resvec[1:maxit],
+                                            precond)
                     elseif abs(SI.ξ) < eps()
-                        return SpmrScResult(x, y, OTHER, k-1, resvec[1:k-1])
+                        return SpmrScResult(x, y, OTHER, k-1, resvec[1:k-1], precond)
                     end
 
                     @update_qr!(Ω, SI)
@@ -136,17 +143,17 @@ for (func, bidiag_func) in function_pairs
                     $(iteration_quotes[func][:compute_res])
                 end
 
-                return SpmrScResult(x, y, MAXIT_EXCEEDED, m, resvec)
+                return SpmrScResult(x, y, MAXIT_EXCEEDED, m, resvec, precond)
             end
         end
     elseif func == :spmr_ns || func == :spqmr_ns
         @eval begin
             function $func(K::SpmrNsMatrix, f::AbstractVector{<:Real};
-                           tol::Float64=1e-6, maxit::Int=10)
+                           tol::Float64=1e-6, maxit::Int=10, precond::RealInvOperator=I)
                 n, m = block_sizes(K)
 
                 fₕ = K.H₁' * -f
-                SNI, SI₀ = $bidiag_func(K, fₕ, fₕ)
+                SNI, SI₀ = $bidiag_func(K, fₕ, fₕ, precond=precond)
 
                 @init_qr(SI₀)
                 @init_x!(p, SI₀, n)

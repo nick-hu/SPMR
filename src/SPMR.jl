@@ -9,8 +9,10 @@ include("invfunctionmap.jl")
 
 const FloatOperator = Union{AbstractMatrix{Float64}, LinearMap{Float64}}
 const RealOperator = Union{AbstractMatrix{<:Real}, LinearMap{<:Real}}
-const FloatInvOperator = Union{Factorization{Float64}, InvLinearMap{Float64}}
-const RealInvOperator = Union{Factorization{<:Real}, InvLinearMap{<:Real}}
+const FloatInvOperator = Union{Factorization{Float64}, InvLinearMap{Float64},
+                               UniformScaling}
+const RealInvOperator = Union{Factorization{<:Real}, InvLinearMap{<:Real},
+                              UniformScaling}
 
 function Base.convert(::Type{FloatOperator}, A::RealOperator)
     if isa(A, AbstractMatrix{<:Real})
@@ -18,6 +20,13 @@ function Base.convert(::Type{FloatOperator}, A::RealOperator)
     else
         return convert(LinearMap{Float64}, A)
     end
+end
+
+# ldiv! for UniformScaling matrices (e.g., when no preconditioner is specified)
+
+function LinearAlgebra.ldiv!(y::AbstractVector, A::UniformScaling, x::AbstractVector)
+    y .= x / A.λ
+    return y
 end
 
 include("spmatrix.jl")
