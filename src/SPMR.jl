@@ -8,9 +8,14 @@ using LinearMaps: LinearMap
 include("invfunctionmap.jl")
 
 const FloatOperator = Union{AbstractMatrix{Float64}, LinearMap{Float64}}
+
+"""An `AbstractMatrix{<:Real}` or a `LinearMaps.LinearMap{<:Real}`."""
 const RealOperator = Union{AbstractMatrix{<:Real}, LinearMap{<:Real}}
+
 const FloatInvOperator = Union{Factorization{Float64}, InvLinearMap{Float64},
                                UniformScaling}
+
+"""A `Factorization{<:Real}`, `SPMR.InvLinearMap{<:Real}`, or `UniformScaling`."""
 const RealInvOperator = Union{Factorization{<:Real}, InvLinearMap{<:Real},
                               UniformScaling}
 

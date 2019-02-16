@@ -10,6 +10,15 @@ abstract type SpmrMatrix end
 
 # -SC family
 
+"""
+Saddle-point matrix type for SPMR-SC and SPQMR-SC representing a block matrix of the form
+```math
+\\begin{bmatrix}
+A & G_1^T \\\\ G_2 & 0
+\\end{bmatrix},
+```
+where ``A \\in \\mathbb{R}^{n \\times n}`` and ``G_1, G_2 \\in \\mathbb{R}^{m \\times n}``.
+"""
 struct SpmrScMatrix{T<:FloatInvOperator,
                     U<:FloatInvOperator,
                     V<:FloatOperator,
@@ -49,6 +58,12 @@ function SpmrScMatrix(A::T, Aᵀ::U, G₁ᵀ::V, G₂::W) where {T<:FloatInvOper
     return SpmrScMatrix{T, U, V, W}(A, Aᵀ, G₁ᵀ, G₂)
 end
 
+"""
+    SpmrScMatrix(A::InvLinearMap{Float64}, G₁ᵀ::RealOperator, G₂::RealOperator)
+
+Construct an [`SpmrScMatrix`](@ref) from an [`InvLinearMap`](@ref) representing ``A^{-1}`` and
+[`RealOperator`](@ref)s representing ``G_1^T`` and ``G_2``.
+"""
 function SpmrScMatrix(A::T, G₁ᵀ::V, G₂::W) where {T<:InvLinearMap{Float64},
                                                   V<:RealOperator,
                                                   W<:RealOperator}
@@ -70,6 +85,12 @@ function SpmrScMatrix(A::T, G₁ᵀ::V, G₂::W) where {T<:AbstractMatrix{Float6
     return SpmrScMatrix(F, Fᵀ, G₁ᵀ, G₂)
 end
 
+"""
+    SpmrScMatrix(A::AbstractMatrix{<:Real}, G₁ᵀ::RealOperator, G₂::RealOperator)
+
+Construct an [`SpmrScMatrix`](@ref) from an `AbstractMatrix` representing ``A`` and
+[`RealOperator`](@ref)s representing ``G_1^T`` and ``G_2``.
+"""
 function SpmrScMatrix(A::T, G₁ᵀ::V, G₂::W) where {T<:AbstractMatrix{<:Real},
                                                   V<:RealOperator,
                                                   W<:RealOperator}
@@ -111,10 +132,24 @@ Base.convert(::Type{SparseMatrixCSC}, K::SpmrScMatrix) = sparse(K)
 Base.size(K::SpmrScMatrix) = (size(K.A, 1) + size(K.G₂, 1),
                               size(K.A, 2) + size(K.G₁ᵀ, 2))
 
+"""
+    block_sizes(K::SpmrScMatrix)
+
+Return ``(n, m)``.
+"""
 block_sizes(K::SpmrScMatrix) = (size(K.A, 1), size(K.G₂, 1))
 
 # -NS family
 
+"""
+Saddle-point matrix type for SPMR-NS and SPQMR-NS representing a block matrix of the form
+```math
+\\begin{bmatrix}
+A & G_1^T \\\\ G_2 & 0
+\\end{bmatrix},
+```
+where ``A \\in \\mathbb{R}^{n \\times n}`` and ``G_1, G_2 \\in \\mathbb{R}^{m \\times n}``.
+"""
 struct SpmrNsMatrix{T<:FloatOperator,
                     U<:FloatOperator,
                     V<:FloatOperator} <: SpmrMatrix
@@ -157,6 +192,13 @@ function SpmrNsMatrix(A::T, H₁::U, H₂::V, m::Int) where {T<:FloatOperator,
     return SpmrNsMatrix{T, U, V}(A, H₁, H₂, m)
 end
 
+"""
+    SpmrNsMatrix(A::RealOperator, H₁::RealOperator, H₂::RealOperator, m::Integer)
+
+Construct an [`SpmrNsMatrix`](@ref) from [`RealOperator`](@ref)s representing ``A``,
+``H_1``, and ``H_2``, where ``H_1`` and ``H_2`` are nullspace bases for ``G_1`` and
+``G_2``, respectively, and ``m`` is as above.
+"""
 function SpmrNsMatrix(A::T, H₁::U, H₂::V, m::Integer) where {T<:RealOperator,
                                                              U<:RealOperator,
                                                              V<:RealOperator}
@@ -168,7 +210,20 @@ end
 
 SpmrNsMatrix(K::SpmrNsMatrix) = K
 
+"""
+    block_sizes(K::SpmrNsMatrix)
+
+Return ``(n, m)``.
+"""
 block_sizes(K::SpmrNsMatrix) = (size(K.A, 1), K.m)
+
+"""
+    nullsp_basis_size(K::SpmrNsMatrix)
+
+Return the second dimension of ``H_1`` (and ``H_2``).
+
+This is typically ``n-m`` or ``n``.
+"""
 nullsp_basis_size(K::SpmrNsMatrix) = size(K.H₁, 2)
 
 # Helper functions

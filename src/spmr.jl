@@ -13,6 +13,29 @@ include("spmr_macros.jl")
     OTHER
 end
 
+@doc begin
+"""
+Status flag for SPMR solvers.
+
+# Flags
+-   `CONVERGED`:
+    the relative residual or estimate thereof fell below the prescribed
+    tolerance.
+-   `MAXIT_EXCEEDED`: the maximum number of iterations was performed.
+-   `OTHER`: some computed quantity became too small.
+"""
+end SpmrFlag
+
+"""
+Result struct for SPMR-SC and SPQMR-SC.
+
+# Fields
+-   `x`: ``\\vec{x}``.
+-   `y`: ``\\vec{y}``.
+-   `flag`: an [`SpmrFlag`](@ref) describing the terminal state of the iteration.
+-   `iter`: the number of iterations performed.
+-   `resvec`: the vector of relative residuals or estimates thereof.
+"""
 struct SpmrScResult
     x::Vector{Float64}
     y::Vector{Float64}
@@ -27,6 +50,19 @@ function SpmrScResult(x::Vector{Float64}, y::Vector{Float64}, flag::SpmrFlag, it
     return SpmrScResult(x, ŷ, flag, iter, resvec)
 end
 
+"""
+Result struct for SPQMR-NS and SPQMR-NS.
+
+# Fields
+-   `x`: ``\\vec{x}``.
+-   `flag`: an [`SpmrFlag`](@ref) describing the terminal state of the iteration.
+-   `iter`: the number of iterations performed.
+-   `resvec`: the vector of relative residuals or estimates thereof.
+
+!!! note
+
+    ``\\vec{y}`` must be recovered separately.
+"""
 struct SpmrNsResult
     x::Vector{Float64}
     flag::SpmrFlag
@@ -184,6 +220,117 @@ for (func, bidiag_func) in function_pairs
         end
     end
 end
+
+@doc begin
+"""
+    spmr_sc(K, g; <keyword arguments>)
+
+Solve the saddle-point system
+```math
+\\begin{bmatrix} A & G_1^T \\\\ G_2 & 0 \\end{bmatrix}
+\\begin{bmatrix} \\vec{x} \\\\ \\vec{y} \\end{bmatrix} =
+\\begin{bmatrix} \\vec{0} \\\\ \\vec{g} \\end{bmatrix}
+```
+by residual minimization using the Schur complement of ``A``,
+where
+```math
+K =
+\\begin{bmatrix} A & G_1^T \\\\ G_2 & 0 \\end{bmatrix}
+```
+is an [`SpmrScMatrix`](@ref).
+
+The solution along with additional information is returned as an
+[`SpmrScResult`](@ref).
+
+# Arguments
+- `tol::Float64=1e-6`: the relative residual tolerance.
+- `maxit::Int=10`: the maximum number of iterations to perform.
+- `precond::RealInvOperator=I`: a symmetric positive-definite preconditioner.
+"""
+end spmr_sc
+
+@doc begin
+"""
+    spqmr_sc(K, g; <keyword arguments>)
+
+Solve the saddle-point system
+```math
+\\begin{bmatrix} A & G_1^T \\\\ G_2 & 0 \\end{bmatrix}
+\\begin{bmatrix} \\vec{x} \\\\ \\vec{y} \\end{bmatrix} =
+\\begin{bmatrix} \\vec{0} \\\\ \\vec{g} \\end{bmatrix}
+```
+where
+```math
+K =
+\\begin{bmatrix} A & G_1^T \\\\ G_2 & 0 \\end{bmatrix}
+```
+is an [`SpmrScMatrix`](@ref).
+
+The solution along with additional information is returned as an
+[`SpmrScResult`](@ref).
+
+# Arguments
+- `tol::Float64=1e-6`: the relative residual tolerance.
+- `maxit::Int=10`: the maximum number of iterations to perform.
+- `precond::RealInvOperator=I`: a symmetric positive-definite preconditioner.
+"""
+end spqmr_sc
+
+@doc begin
+"""
+    spmr_ns(K, f; <keyword arguments>)
+
+Solve the saddle-point system
+```math
+\\begin{bmatrix} A & G_1^T \\\\ G_2 & 0 \\end{bmatrix}
+\\begin{bmatrix} \\vec{x} \\\\ \\vec{y} \\end{bmatrix} =
+\\begin{bmatrix} \\vec{f} \\\\ \\vec{0} \\end{bmatrix}
+```
+by residual minimization using the nullspaces of ``G_1^T`` and ``G_2``,
+where
+```math
+K =
+\\begin{bmatrix} A & G_1^T \\\\ G_2 & 0 \\end{bmatrix}
+```
+is an [`SpmrNsMatrix`](@ref).
+
+The solution along with additional information is returned as an
+[`SpmrNsResult`](@ref).
+
+# Arguments
+- `tol::Float64=1e-6`: the relative residual tolerance.
+- `maxit::Int=10`: the maximum number of iterations to perform.
+- `precond::RealInvOperator=I`: a symmetric positive-definite preconditioner.
+"""
+end spmr_ns
+
+@doc begin
+"""
+    spqmr_ns(K, f; <keyword arguments>)
+
+Solve the saddle-point system
+```math
+\\begin{bmatrix} A & G_1^T \\\\ G_2 & 0 \\end{bmatrix}
+\\begin{bmatrix} \\vec{x} \\\\ \\vec{y} \\end{bmatrix} =
+\\begin{bmatrix} \\vec{f} \\\\ \\vec{0} \\end{bmatrix}
+```
+by residual quazi-minimization using the nullspaces of ``G_1^T`` and ``G_2``,
+where
+```math
+K =
+\\begin{bmatrix} A & G_1^T \\\\ G_2 & 0 \\end{bmatrix}
+```
+is an [`SpmrNsMatrix`](@ref).
+
+The solution along with additional information is returned as an
+[`SpmrNsResult`](@ref).
+
+# Arguments
+- `tol::Float64=1e-6`: the relative residual tolerance.
+- `maxit::Int=10`: the maximum number of iterations to perform.
+- `precond::RealInvOperator=I`: a symmetric positive-definite preconditioner.
+"""
+end spqmr_ns
 
 function recover_y(result::SpmrNsResult, K::SpmrNsMatrix, G₁ᵀ::AbstractMatrix{<:Real},
                    f::Vector{<:Real})

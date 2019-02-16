@@ -6,3 +6,7 @@
 **Author: Nicholas Hu ([nicholas.hu@alumni.ubc.ca](mailto:nicholas.hu@alumni.ubc.ca), [@nick-hu](https://github.com/nick-hu))**
 
 SPMR: A family of saddle-point minimal residual solvers
+
+## Documentation
+
+The documentation can be viewed [here](http://www.cs.ubc.ca/~njhu/SPMRdocs/).
