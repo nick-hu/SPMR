@@ -259,6 +259,7 @@ Solve the saddle-point system
 \\begin{bmatrix} \\vec{x} \\\\ \\vec{y} \\end{bmatrix} =
 \\begin{bmatrix} \\vec{0} \\\\ \\vec{g} \\end{bmatrix}
 ```
+by residual quazi-minimization using the Schur complement of ``A``,
 where
 ```math
 K =

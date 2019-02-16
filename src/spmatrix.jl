@@ -193,19 +193,19 @@ function SpmrNsMatrix(A::T, H₁::U, H₂::V, m::Int) where {T<:FloatOperator,
 end
 
 """
-    SpmrNsMatrix(A::RealOperator, H₁::RealOperator, H₂::RealOperator, m::Integer)
+    SpmrNsMatrix(A::RealOperator, H₁::RealOperator, H₂::RealOperator, m::Int)
 
 Construct an [`SpmrNsMatrix`](@ref) from [`RealOperator`](@ref)s representing ``A``,
 ``H_1``, and ``H_2``, where ``H_1`` and ``H_2`` are nullspace bases for ``G_1`` and
 ``G_2``, respectively, and ``m`` is as above.
 """
-function SpmrNsMatrix(A::T, H₁::U, H₂::V, m::Integer) where {T<:RealOperator,
-                                                             U<:RealOperator,
-                                                             V<:RealOperator}
+function SpmrNsMatrix(A::T, H₁::U, H₂::V, m::Int) where {T<:RealOperator,
+                                                         U<:RealOperator,
+                                                         V<:RealOperator}
     return SpmrNsMatrix(convert(FloatOperator, A),
                         convert(FloatOperator, H₁),
                         convert(FloatOperator, H₂),
-                        convert(Int, m))
+                        m)
 end
 
 SpmrNsMatrix(K::SpmrNsMatrix) = K

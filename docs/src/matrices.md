@@ -17,7 +17,7 @@ block_sizes(::SpmrScMatrix)
 
 ```@docs
 SpmrNsMatrix
-SpmrNsMatrix(::T, ::U, ::V, ::Integer) where {T<:RealOperator, U<:RealOperator, V<:RealOperator}
+SpmrNsMatrix(::T, ::U, ::V, ::Int) where {T<:RealOperator, U<:RealOperator, V<:RealOperator}
 block_sizes(::SpmrNsMatrix)
 nullsp_basis_size
 ```
